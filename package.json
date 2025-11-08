@@ -4,6 +4,7 @@
   "description": "複数のLLM（Claude, OpenAI, Gemini）を使用してコードのdocstringとコメントを翻訳（Python, JS, TS, Go対応）",
   "version": "1.0.0",
   "publisher": "m-cube",
+  "icon": "icon-design.png",
   "engines": {
     "vscode": "^1.105.0"
   },
