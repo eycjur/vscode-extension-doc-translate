@@ -135,11 +135,36 @@ export class InlineTranslationProvider {
     private updateDecorationsForEditor(document: vscode.TextDocument): void {
         const fileKey = document.uri.toString();
 
+        // First, check active editor (most important for newly opened files)
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document.uri.toString() === fileKey) {
+            this.applyDecorationsToEditor(activeEditor);
+            return;
+        }
+
+        // Then check all visible editors
         for (const editor of vscode.window.visibleTextEditors) {
             if (editor.document.uri.toString() === fileKey) {
                 this.applyDecorationsToEditor(editor);
+                return;
             }
         }
+
+        // If not found in visible editors, wait a bit and try again
+        // (file might have just been opened and editor not yet in visibleTextEditors)
+        setTimeout(() => {
+            const retryEditor = vscode.window.activeTextEditor;
+            if (retryEditor && retryEditor.document.uri.toString() === fileKey) {
+                this.applyDecorationsToEditor(retryEditor);
+            } else {
+                for (const editor of vscode.window.visibleTextEditors) {
+                    if (editor.document.uri.toString() === fileKey) {
+                        this.applyDecorationsToEditor(editor);
+                        break;
+                    }
+                }
+            }
+        }, 100);
     }
 
     /**

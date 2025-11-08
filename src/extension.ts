@@ -56,13 +56,16 @@ export function activate(context: vscode.ExtensionContext) {
 	logger.info('Configuration watcher registered');
 
 	// Pre-translate currently open supported files
+	// Delay slightly to ensure editors are fully initialized
 	logger.info('Pre-translating open supported files...');
-	vscode.workspace.textDocuments.forEach(doc => {
-		if (BlockDetectorFactory.isLanguageSupported(doc.languageId)) {
-			logger.info(`Queuing pre-translation for open file: ${doc.fileName}`);
-			preTranslationService.preTranslateDocument(doc);
-		}
-	});
+	setTimeout(() => {
+		vscode.workspace.textDocuments.forEach(doc => {
+			if (BlockDetectorFactory.isLanguageSupported(doc.languageId)) {
+				logger.info(`Queuing pre-translation for open file: ${doc.fileName}`);
+				preTranslationService.preTranslateDocument(doc);
+			}
+		});
+	}, 200);
 
 	// Watch for file open events
 	const onOpenDisposable = vscode.workspace.onDidOpenTextDocument((document) => {
