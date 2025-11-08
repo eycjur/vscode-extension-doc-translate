@@ -5,13 +5,14 @@ VSCode extension that translates English docstrings and comments in Python code 
 ## Features
 
 - **Hover Translation**: Hover over Python docstrings or comments to see Japanese translations
+- **LSP-Powered Detection**: Uses VSCode's Language Server Protocol for accurate Python syntax analysis
 - **Smart Block Detection**: Automatically detects and translates:
-  - Docstrings (both `"""` and `'''` styles)
+  - Docstrings (both `"""` and `'''` styles) - detected via LSP for accuracy
   - Comment blocks (consecutive lines starting with `#`)
   - Inline comments (end-of-line comments)
 - **Translation Cache**: Caches translations in memory to avoid redundant API calls
 - **Loading Indicator**: Shows a spinning icon in the status bar while translating
-- **Comprehensive Logging**: Detailed logs showing API requests, responses, and debugging info
+- **Comprehensive Logging**: Detailed logs showing LSP queries, API requests, responses, and debugging info
 - **Configurable**: Supports both environment variable and VSCode settings for API key configuration
 
 ## Requirements
@@ -54,7 +55,8 @@ To view detailed logs:
 3. The "Doc Translate" output channel will show detailed logs including:
    - Extension activation status
    - API key detection
-   - Block detection results
+   - LSP symbol queries and results
+   - Block detection results (LSP vs regex fallback)
    - Translation requests and responses
    - Cache hits/misses
    - Error details

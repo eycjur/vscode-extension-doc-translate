@@ -25,8 +25,8 @@ export class TranslationHoverProvider implements vscode.HoverProvider {
     ): Promise<vscode.Hover | null> {
         logger.info(`Hover triggered at ${document.fileName}:${position.line}:${position.character}`);
 
-        // Extract text block at cursor position
-        const block = this.detector.extractBlock(document, position);
+        // Extract text block at cursor position (now async for LSP support)
+        const block = await this.detector.extractBlock(document, position);
         if (!block || !block.text) {
             logger.debug('No translatable block found, skipping hover');
             return null;
