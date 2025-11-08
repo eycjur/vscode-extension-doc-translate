@@ -244,17 +244,23 @@ export class PythonBlockDetector extends BaseBlockDetector {
         }
 
         // 2. Extract docstrings via LSP
-        try {
-            const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-                'vscode.executeDocumentSymbolProvider',
-                document.uri
-            );
+        const docstringsBeforeSymbols = blocks.filter(block => block.type === 'docstring').length;
+        let docstringsAddedFromSymbols = false;
 
+        try {
+            const symbols = await this.getSymbolsFromLSP(document);
             if (symbols && symbols.length > 0) {
                 await this.extractDocstringsFromSymbols(document, symbols, blocks);
+                const docstringsAfterSymbols = blocks.filter(block => block.type === 'docstring').length;
+                docstringsAddedFromSymbols = docstringsAfterSymbols > docstringsBeforeSymbols;
             }
         } catch (error) {
             logger.error('Failed to get symbols from LSP', error);
+        }
+
+        if (!docstringsAddedFromSymbols) {
+            logger.debug('Falling back to text-based docstring extraction for Python document');
+            this.extractDocstringsWithoutLSP(document, blocks);
         }
 
         // 3. Extract inline comments
@@ -305,6 +311,26 @@ export class PythonBlockDetector extends BaseBlockDetector {
             if (comment && comment.text.trim()) {
                 blocks.push({ ...comment, type: 'comment' });
                 logger.debug(`Extracted comment at line ${lineNum}: ${comment.text.substring(0, 30)}...`);
+            }
+        }
+    }
+
+    /**
+     * Fallback: extract docstrings by scanning the document text when LSP data is unavailable
+     */
+    private extractDocstringsWithoutLSP(
+        document: vscode.TextDocument,
+        blocks: TextBlock[]
+    ): void {
+        for (let lineNum = 0; lineNum < document.lineCount; lineNum++) {
+            const lineText = document.lineAt(lineNum).text;
+            if (lineText.includes('"""') || lineText.includes("'''")) {
+                const docstring = this.extractDocstringFromLine(document, lineNum);
+                if (docstring && docstring.text.trim()) {
+                    blocks.push({ ...docstring, type: 'docstring' });
+                    logger.debug(`Fallback docstring extraction at line ${lineNum}: ${docstring.text.substring(0, 30)}...`);
+                    lineNum = docstring.range.end.line;
+                }
             }
         }
     }

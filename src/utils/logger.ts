@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
 
+interface NotificationAction {
+    label: string;
+    callback: () => void | Thenable<void>;
+}
+
 class Logger {
     private static instance: Logger;
     private outputChannel: vscode.OutputChannel;
@@ -77,7 +82,7 @@ class Logger {
      * Show error notification with action to view logs
      * Use for critical errors that require user attention
      */
-    public notifyCriticalError(message: string, error?: any): void {
+    public notifyCriticalError(message: string, error?: any, actions: NotificationAction[] = []): void {
         this.error(message, error);
 
         const errorKey = `critical:${message}`;
@@ -85,12 +90,25 @@ class Logger {
             return;
         }
 
+        const actionLabels = actions.map(action => action.label);
+        const selectionItems = [...actionLabels, 'View Logs'];
+
         vscode.window.showErrorMessage(
             `Doc Translate: ${message}`,
-            'View Logs'
+            ...selectionItems
         ).then(selection => {
+            if (!selection) {
+                return;
+            }
+
             if (selection === 'View Logs') {
                 this.show();
+                return;
+            }
+
+            const action = actions.find(item => item.label === selection);
+            if (action) {
+                action.callback();
             }
         });
     }

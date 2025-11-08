@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
 import { ITranslationProvider } from './base/translationProvider';
 import { BaseProvider } from './base/baseProvider';
@@ -51,7 +52,12 @@ export class OpenAIProvider extends BaseProvider implements ITranslationProvider
             await this.initializeClient();
             if (!this.client) {
                 const errorMsg = 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable or configure docTranslate.openaiApiKey in settings.';
-                logger.notifyCriticalError(errorMsg);
+                logger.notifyCriticalError(errorMsg, undefined, [
+                    {
+                        label: 'Open Settings',
+                        callback: () => vscode.commands.executeCommand('workbench.action.openSettings', 'docTranslate.openaiApiKey')
+                    }
+                ]);
                 throw new Error(errorMsg);
             }
         }

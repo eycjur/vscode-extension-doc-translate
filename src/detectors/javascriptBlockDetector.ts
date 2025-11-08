@@ -297,9 +297,19 @@ export class JavaScriptBlockDetector extends BaseBlockDetector {
         }
 
         // 2. Extract JSDoc comments via LSP
+        const docstringsBeforeSymbols = blocks.filter(block => block.type === 'docstring').length;
+        let docstringsAddedFromSymbols = false;
+
         const symbols = await this.getSymbolsFromLSP(document);
-        if (symbols) {
+        if (symbols && symbols.length > 0) {
             await this.extractJSDocsFromSymbols(document, symbols, blocks);
+            const docstringsAfterSymbols = blocks.filter(block => block.type === 'docstring').length;
+            docstringsAddedFromSymbols = docstringsAfterSymbols > docstringsBeforeSymbols;
+        }
+
+        if (!docstringsAddedFromSymbols) {
+            logger.debug('Falling back to text-based JSDoc extraction');
+            this.extractDocstringsWithoutLSP(document, blocks);
         }
 
         // 3. Extract inline comments
@@ -350,6 +360,43 @@ export class JavaScriptBlockDetector extends BaseBlockDetector {
                 logger.debug(`Extracted comment at line ${lineNum}: ${comment.text.substring(0, 30)}...`);
             }
         }
+    }
+
+    /**
+     * Fallback: extract JSDoc comments by scanning the document text when LSP data is unavailable
+     */
+    private extractDocstringsWithoutLSP(
+        document: vscode.TextDocument,
+        blocks: TextBlock[]
+    ): void {
+        for (let lineNum = 0; lineNum < document.lineCount; lineNum++) {
+            const trimmed = document.lineAt(lineNum).text.trim();
+            if (trimmed.startsWith('/**') || trimmed.startsWith('/*')) {
+                const comment = this.extractDocstringFromLine(document, lineNum);
+                if (comment && comment.text.trim()) {
+                    if (this.isLikelyDeclarationAhead(document, comment.range.end.line)) {
+                        blocks.push({ ...comment, type: 'docstring' });
+                        logger.debug(`Fallback JSDoc extraction at line ${lineNum}: ${comment.text.substring(0, 30)}...`);
+                    }
+                    lineNum = comment.range.end.line;
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if a declaration likely follows a comment block
+     */
+    private isLikelyDeclarationAhead(document: vscode.TextDocument, line: number): boolean {
+        for (let i = line + 1; i < document.lineCount; i++) {
+            const trimmed = document.lineAt(i).text.trim();
+            if (trimmed === '' || trimmed.startsWith('//')) {
+                continue;
+            }
+
+            return /^(class|function|const|let|var|export|interface|type)/.test(trimmed);
+        }
+        return false;
     }
 
 }

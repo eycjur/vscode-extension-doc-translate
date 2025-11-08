@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../utils/logger';
 import { ITranslationProvider } from './base/translationProvider';
@@ -38,7 +39,12 @@ export class AnthropicProvider extends BaseProvider implements ITranslationProvi
             this.initializeClient();
             if (!this.client) {
                 const errorMsg = 'Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable or configure docTranslate.anthropicApiKey in settings.';
-                logger.notifyCriticalError(errorMsg);
+                logger.notifyCriticalError(errorMsg, undefined, [
+                    {
+                        label: 'Open Settings',
+                        callback: () => vscode.commands.executeCommand('workbench.action.openSettings', 'docTranslate.anthropicApiKey')
+                    }
+                ]);
                 throw new Error(errorMsg);
             }
         }

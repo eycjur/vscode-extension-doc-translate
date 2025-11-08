@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
 import { ITranslationProvider } from './base/translationProvider';
 import { BaseProvider } from './base/baseProvider';
@@ -54,7 +55,12 @@ export class GeminiProvider extends BaseProvider implements ITranslationProvider
             await this.initializeClient();
             if (!this.client || !this.model) {
                 const errorMsg = 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable or configure docTranslate.geminiApiKey in settings.';
-                logger.notifyCriticalError(errorMsg);
+                logger.notifyCriticalError(errorMsg, undefined, [
+                    {
+                        label: 'Open Settings',
+                        callback: () => vscode.commands.executeCommand('workbench.action.openSettings', 'docTranslate.geminiApiKey')
+                    }
+                ]);
                 throw new Error(errorMsg);
             }
         }

@@ -393,9 +393,19 @@ export class GoBlockDetector extends BaseBlockDetector {
         }
 
         // 2. Extract godoc comments via LSP
+        const docstringsBeforeSymbols = blocks.filter(block => block.type === 'docstring').length;
+        let docstringsAddedFromSymbols = false;
+
         const symbols = await this.getSymbolsFromLSP(document);
-        if (symbols) {
+        if (symbols && symbols.length > 0) {
             await this.extractGodocsFromSymbols(document, symbols, blocks);
+            const docstringsAfterSymbols = blocks.filter(block => block.type === 'docstring').length;
+            docstringsAddedFromSymbols = docstringsAfterSymbols > docstringsBeforeSymbols;
+        }
+
+        if (!docstringsAddedFromSymbols) {
+            logger.debug('Falling back to text-based godoc extraction');
+            this.extractDocstringsWithoutLSP(document, blocks);
         }
 
         // 3. Extract inline comments
@@ -446,6 +456,56 @@ export class GoBlockDetector extends BaseBlockDetector {
                 logger.debug(`Extracted comment at line ${lineNum}: ${comment.text.substring(0, 30)}...`);
             }
         }
+    }
+
+    /**
+     * Fallback: extract godoc comments by scanning text when LSP data is unavailable
+     */
+    private extractDocstringsWithoutLSP(
+        document: vscode.TextDocument,
+        blocks: TextBlock[]
+    ): void {
+        for (let lineNum = 0; lineNum < document.lineCount; lineNum++) {
+            const trimmed = document.lineAt(lineNum).text.trim();
+
+            if (trimmed.startsWith('//')) {
+                const comment = this.extractSingleLineCommentBlock(document, lineNum);
+                if (comment && comment.text.trim() && this.isLikelyGoDeclarationAhead(document, comment.range.end.line)) {
+                    blocks.push({ ...comment, type: 'docstring' });
+                    logger.debug(`Fallback godoc extraction at line ${lineNum}: ${comment.text.substring(0, 30)}...`);
+                }
+                if (comment) {
+                    lineNum = comment.range.end.line;
+                }
+                continue;
+            }
+
+            if (trimmed.startsWith('/*')) {
+                const comment = this.extractDocstringFromLine(document, lineNum);
+                if (comment && comment.text.trim() && this.isLikelyGoDeclarationAhead(document, comment.range.end.line)) {
+                    blocks.push({ ...comment, type: 'docstring' });
+                    logger.debug(`Fallback block comment extraction at line ${lineNum}: ${comment.text.substring(0, 30)}...`);
+                }
+                if (comment) {
+                    lineNum = comment.range.end.line;
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if a Go declaration likely follows a comment block
+     */
+    private isLikelyGoDeclarationAhead(document: vscode.TextDocument, line: number): boolean {
+        for (let i = line + 1; i < document.lineCount; i++) {
+            const trimmed = document.lineAt(i).text.trim();
+            if (trimmed === '') {
+                continue;
+            }
+
+            return /^(type|func|var|const|package)/.test(trimmed);
+        }
+        return false;
     }
 
 }
