@@ -92,8 +92,13 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	logger.info('File save watcher registered');
 
-	// Watch for active editor changes (to refresh inline decorations)
-	const onEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
+	// Watch for active editor changes (to refresh inline decorations and trigger translation)
+	const onEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor((editor) => {
+		if (editor && BlockDetectorFactory.isLanguageSupported(editor.document.languageId)) {
+			logger.info(`Active editor changed to: ${editor.document.fileName} (${editor.document.languageId})`);
+			// Trigger pre-translation for this document
+			preTranslationService.preTranslateDocument(editor.document);
+		}
 		inlineProvider.refreshVisibleEditors();
 	});
 	logger.info('Editor change watcher registered');
