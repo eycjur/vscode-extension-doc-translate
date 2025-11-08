@@ -3,9 +3,13 @@ import * as vscode from 'vscode';
 class Logger {
     private static instance: Logger;
     private outputChannel: vscode.OutputChannel;
+    private statusBarItem: vscode.StatusBarItem;
+    private recentErrors: Map<string, number> = new Map(); // Track recent errors to avoid spam
+    private readonly ERROR_COOLDOWN_MS = 60000; // Don't show same error more than once per minute
 
     private constructor() {
         this.outputChannel = vscode.window.createOutputChannel('Doc Translate');
+        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     }
 
     public static getInstance(): Logger {
@@ -54,8 +58,91 @@ class Logger {
         this.outputChannel.show();
     }
 
+    /**
+     * Check if we should show this error notification (to avoid spam)
+     */
+    private shouldShowError(errorKey: string): boolean {
+        const now = Date.now();
+        const lastShown = this.recentErrors.get(errorKey);
+
+        if (!lastShown || now - lastShown > this.ERROR_COOLDOWN_MS) {
+            this.recentErrors.set(errorKey, now);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Show error notification with action to view logs
+     * Use for critical errors that require user attention
+     */
+    public notifyCriticalError(message: string, error?: any): void {
+        this.error(message, error);
+
+        const errorKey = `critical:${message}`;
+        if (!this.shouldShowError(errorKey)) {
+            return;
+        }
+
+        vscode.window.showErrorMessage(
+            `Doc Translate: ${message}`,
+            'View Logs'
+        ).then(selection => {
+            if (selection === 'View Logs') {
+                this.show();
+            }
+        });
+    }
+
+    /**
+     * Show error notification in status bar (less intrusive)
+     * Use for non-critical errors
+     */
+    public notifyError(message: string, error?: any): void {
+        this.error(message, error);
+
+        const errorKey = `error:${message}`;
+        if (!this.shouldShowError(errorKey)) {
+            return;
+        }
+
+        // Show error in status bar temporarily
+        this.statusBarItem.text = `$(error) ${message}`;
+        this.statusBarItem.tooltip = 'Click to view logs';
+        this.statusBarItem.command = 'doc-translate.showLogs';
+        this.statusBarItem.show();
+
+        // Hide after 5 seconds
+        setTimeout(() => {
+            this.statusBarItem.hide();
+        }, 5000);
+    }
+
+    /**
+     * Show warning notification in status bar
+     */
+    public notifyWarning(message: string): void {
+        this.warn(message);
+
+        const errorKey = `warn:${message}`;
+        if (!this.shouldShowError(errorKey)) {
+            return;
+        }
+
+        this.statusBarItem.text = `$(warning) ${message}`;
+        this.statusBarItem.tooltip = 'Click to view logs';
+        this.statusBarItem.command = 'doc-translate.showLogs';
+        this.statusBarItem.show();
+
+        setTimeout(() => {
+            this.statusBarItem.hide();
+        }, 3000);
+    }
+
     public dispose(): void {
         this.outputChannel.dispose();
+        this.statusBarItem.dispose();
     }
 }
 

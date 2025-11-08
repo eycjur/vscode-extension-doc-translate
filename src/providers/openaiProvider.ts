@@ -51,7 +51,7 @@ export class OpenAIProvider extends BaseProvider implements ITranslationProvider
             await this.initializeClient();
             if (!this.client) {
                 const errorMsg = 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable or configure docTranslate.openaiApiKey in settings.';
-                logger.error(errorMsg);
+                logger.notifyCriticalError(errorMsg);
                 throw new Error(errorMsg);
             }
         }
@@ -127,11 +127,12 @@ export class OpenAIProvider extends BaseProvider implements ITranslationProvider
             return translation;
         } catch (error: any) {
             if (error.name === 'AbortError') {
-                const errorMsg = `Translation request timed out after ${timeout}ms`;
-                logger.error(errorMsg);
+                const errorMsg = `Translation timed out (${timeout}ms)`;
+                logger.notifyError(errorMsg);
                 throw new Error(errorMsg);
             }
-            logger.error('OpenAI translation failed', error);
+            const errorMsg = `Translation failed: ${error.message || 'Unknown error'}`;
+            logger.notifyError(errorMsg, error);
             throw new Error(`OpenAI translation failed: ${error.message}`);
         }
     }

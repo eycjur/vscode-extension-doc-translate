@@ -54,7 +54,7 @@ export class GeminiProvider extends BaseProvider implements ITranslationProvider
             await this.initializeClient();
             if (!this.client || !this.model) {
                 const errorMsg = 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable or configure docTranslate.geminiApiKey in settings.';
-                logger.error(errorMsg);
+                logger.notifyCriticalError(errorMsg);
                 throw new Error(errorMsg);
             }
         }
@@ -116,11 +116,12 @@ export class GeminiProvider extends BaseProvider implements ITranslationProvider
             return translation;
         } catch (error: any) {
             if (error.message === 'timeout') {
-                const errorMsg = `Translation request timed out after ${timeout}ms`;
-                logger.error(errorMsg);
+                const errorMsg = `Translation timed out (${timeout}ms)`;
+                logger.notifyError(errorMsg);
                 throw new Error(errorMsg);
             }
-            logger.error('Gemini translation failed', error);
+            const errorMsg = `Translation failed: ${error.message || 'Unknown error'}`;
+            logger.notifyError(errorMsg, error);
             throw new Error(`Gemini translation failed: ${error.message}`);
         }
     }

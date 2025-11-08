@@ -38,7 +38,7 @@ export class AnthropicProvider extends BaseProvider implements ITranslationProvi
             this.initializeClient();
             if (!this.client) {
                 const errorMsg = 'Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable or configure docTranslate.anthropicApiKey in settings.';
-                logger.error(errorMsg);
+                logger.notifyCriticalError(errorMsg);
                 throw new Error(errorMsg);
             }
         }
@@ -110,11 +110,12 @@ export class AnthropicProvider extends BaseProvider implements ITranslationProvi
             return translation;
         } catch (error: any) {
             if (error.name === 'AbortError') {
-                const errorMsg = `Translation request timed out after ${timeout}ms`;
-                logger.error(errorMsg);
+                const errorMsg = `Translation timed out (${timeout}ms)`;
+                logger.notifyError(errorMsg);
                 throw new Error(errorMsg);
             }
-            logger.error('Anthropic translation failed', error);
+            const errorMsg = `Translation failed: ${error.message || 'Unknown error'}`;
+            logger.notifyError(errorMsg, error);
             throw new Error(`Anthropic translation failed: ${error.message}`);
         }
     }
