@@ -81,6 +81,15 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	logger.info('File change watcher registered');
 
+	// Watch for file save events (to re-translate with cache)
+	const onSaveDisposable = vscode.workspace.onDidSaveTextDocument((document) => {
+		if (document.languageId === 'python') {
+			logger.info(`Python file saved: ${document.fileName}, re-translating`);
+			preTranslationService.preTranslateDocument(document);
+		}
+	});
+	logger.info('File save watcher registered');
+
 	context.subscriptions.push(
 		hoverDisposable,
 		clearCacheCommand,
@@ -88,6 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
 		configDisposable,
 		onOpenDisposable,
 		onChangeDisposable,
+		onSaveDisposable,
 		{ dispose: () => preTranslationService.dispose() }
 	);
 
