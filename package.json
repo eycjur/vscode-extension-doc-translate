@@ -2,7 +2,7 @@
   "name": "doc-translate",
   "displayName": "Doc Translate",
   "description": "複数のLLM（Claude, OpenAI, Gemini）を使用してコードのdocstringとコメントを翻訳（Python, JS, TS, Go対応）",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "engines": {
     "vscode": "^1.105.0"
   },
