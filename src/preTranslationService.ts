@@ -113,7 +113,7 @@ export class PreTranslationService {
     private async extractAllBlocks(document: vscode.TextDocument): Promise<Array<{ text: string; range: vscode.Range }>> {
         const blocks: Array<{ text: string; range: vscode.Range }> = [];
 
-        // 1. Extract docstrings via LSP
+        // Extract docstrings via LSP
         try {
             const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
                 'vscode.executeDocumentSymbolProvider',
@@ -126,9 +126,6 @@ export class PreTranslationService {
         } catch (error) {
             logger.error('Failed to get symbols from LSP', error);
         }
-
-        // 2. Extract comment blocks
-        this.extractCommentBlocks(document, blocks);
 
         // Deduplicate blocks by text
         const uniqueBlocks = this.deduplicateBlocks(blocks);
@@ -159,73 +156,6 @@ export class PreTranslationService {
             // Recursively process children
             if (symbol.children && symbol.children.length > 0) {
                 await this.extractDocstringsFromSymbols(document, symbol.children, blocks);
-            }
-        }
-    }
-
-    /**
-     * Extract all comment blocks from document
-     */
-    private extractCommentBlocks(
-        document: vscode.TextDocument,
-        blocks: Array<{ text: string; range: vscode.Range }>
-    ): void {
-        const processedLines = new Set<number>();
-
-        for (let lineNum = 0; lineNum < document.lineCount; lineNum++) {
-            // Skip already processed lines
-            if (processedLines.has(lineNum)) {
-                continue;
-            }
-
-            const line = document.lineAt(lineNum);
-            const trimmedText = line.text.trim();
-
-            // Check if it's a comment line
-            if (!trimmedText.startsWith('#')) {
-                continue;
-            }
-
-            // Find the start of the comment block
-            let startLine = lineNum;
-            for (let i = lineNum - 1; i >= 0; i--) {
-                const prevLine = document.lineAt(i).text.trim();
-                if (prevLine.startsWith('#')) {
-                    startLine = i;
-                } else if (prevLine === '') {
-                    break;
-                } else {
-                    break;
-                }
-            }
-
-            // Find the end of the comment block
-            let endLine = lineNum;
-            for (let i = lineNum + 1; i < document.lineCount; i++) {
-                const nextLine = document.lineAt(i).text.trim();
-                if (nextLine.startsWith('#')) {
-                    endLine = i;
-                } else if (nextLine === '') {
-                    break;
-                } else {
-                    break;
-                }
-            }
-
-            // Extract comment text
-            const lines: string[] = [];
-            for (let i = startLine; i <= endLine; i++) {
-                const lineText = document.lineAt(i).text.trim();
-                const commentText = lineText.replace(/^#\s?/, '');
-                lines.push(commentText);
-                processedLines.add(i);
-            }
-
-            const text = lines.join('\n').trim();
-            if (text) {
-                const range = new vscode.Range(startLine, 0, endLine, document.lineAt(endLine).text.length);
-                blocks.push({ text, range });
-                logger.debug(`Extracted comment block (lines ${startLine}-${endLine}): ${text.substring(0, 30)}...`);
             }
         }
     }

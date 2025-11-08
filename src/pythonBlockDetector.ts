@@ -9,7 +9,7 @@ export interface TextBlock {
 export class PythonBlockDetector {
     /**
      * Extract translatable text block at the given position using LSP
-     * Priority: 1) docstring (via LSP), 2) comment block, 3) inline comment
+     * Only detects docstrings via LSP
      */
     async extractBlock(document: vscode.TextDocument, position: vscode.Position): Promise<TextBlock | null> {
         logger.debug(`Extracting block at position: line ${position.line}, char ${position.character}`);
@@ -20,22 +20,6 @@ export class PythonBlockDetector {
             logger.info(`Detected docstring via LSP (${docstring.range.start.line}-${docstring.range.end.line})`);
             logger.debug('Docstring content:', { text: docstring.text.substring(0, 50) + '...' });
             return docstring;
-        }
-
-        // Second, try to detect comment block
-        const commentBlock = this.extractCommentBlock(document, position);
-        if (commentBlock) {
-            logger.info(`Detected comment block (${commentBlock.range.start.line}-${commentBlock.range.end.line})`);
-            logger.debug('Comment block content:', { text: commentBlock.text.substring(0, 50) + '...' });
-            return commentBlock;
-        }
-
-        // Third, try to detect inline comment
-        const inlineComment = this.extractInlineComment(document, position);
-        if (inlineComment) {
-            logger.info(`Detected inline comment at line ${inlineComment.range.start.line}`);
-            logger.debug('Inline comment:', { text: inlineComment.text });
-            return inlineComment;
         }
 
         logger.debug('No translatable block found at this position');
@@ -185,127 +169,5 @@ export class PythonBlockDetector {
         const content = fullText.substring(quote.length, fullText.length - quote.length).trim();
 
         return { text: content, range };
-    }
-
-    /**
-     * Extract comment block (consecutive lines starting with #)
-     */
-    private extractCommentBlock(document: vscode.TextDocument, position: vscode.Position): TextBlock | null {
-        const line = document.lineAt(position.line);
-        const trimmedText = line.text.trim();
-
-        // Check if the current line is a comment line
-        if (!trimmedText.startsWith('#')) {
-            return null;
-        }
-
-        // Find the start of the comment block (search upward)
-        let startLine = position.line;
-        for (let i = position.line - 1; i >= 0; i--) {
-            const lineText = document.lineAt(i).text.trim();
-            if (lineText.startsWith('#')) {
-                startLine = i;
-            } else if (lineText === '') {
-                // Empty line separates comment blocks
-                break;
-            } else {
-                // Non-comment, non-empty line
-                break;
-            }
-        }
-
-        // Find the end of the comment block (search downward)
-        let endLine = position.line;
-        for (let i = position.line + 1; i < document.lineCount; i++) {
-            const lineText = document.lineAt(i).text.trim();
-            if (lineText.startsWith('#')) {
-                endLine = i;
-            } else if (lineText === '') {
-                // Empty line separates comment blocks
-                break;
-            } else {
-                // Non-comment, non-empty line
-                break;
-            }
-        }
-
-        // Extract comment text
-        const lines: string[] = [];
-        for (let i = startLine; i <= endLine; i++) {
-            const lineText = document.lineAt(i).text.trim();
-            // Remove leading # and whitespace
-            const commentText = lineText.replace(/^#\s?/, '');
-            lines.push(commentText);
-        }
-
-        const text = lines.join('\n').trim();
-        const range = new vscode.Range(
-            startLine,
-            0,
-            endLine,
-            document.lineAt(endLine).text.length
-        );
-
-        return { text, range };
-    }
-
-    /**
-     * Extract inline comment (# ... at the end of a line)
-     */
-    private extractInlineComment(document: vscode.TextDocument, position: vscode.Position): TextBlock | null {
-        const line = document.lineAt(position.line);
-        const text = line.text;
-
-        // Find # that is not inside a string
-        const hashIndex = this.findCommentStart(text);
-        if (hashIndex === -1) {
-            return null;
-        }
-
-        // Check if cursor is after the #
-        if (position.character < hashIndex) {
-            return null;
-        }
-
-        // Extract comment text
-        const commentText = text.substring(hashIndex + 1).trim();
-        if (commentText === '') {
-            return null;
-        }
-
-        const range = new vscode.Range(
-            position.line,
-            hashIndex,
-            position.line,
-            text.length
-        );
-
-        return { text: commentText, range };
-    }
-
-    /**
-     * Find the start position of a comment (#) that is not inside a string
-     */
-    private findCommentStart(line: string): number {
-        let inSingleQuote = false;
-        let inDoubleQuote = false;
-        let prevChar = '';
-
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-
-            // Toggle quote states
-            if (char === "'" && prevChar !== '\\' && !inDoubleQuote) {
-                inSingleQuote = !inSingleQuote;
-            } else if (char === '"' && prevChar !== '\\' && !inSingleQuote) {
-                inDoubleQuote = !inDoubleQuote;
-            } else if (char === '#' && !inSingleQuote && !inDoubleQuote) {
-                return i;
-            }
-
-            prevChar = char;
-        }
-
-        return -1;
     }
 }
