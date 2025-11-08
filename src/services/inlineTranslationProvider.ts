@@ -23,7 +23,7 @@ export class InlineTranslationProvider {
             after: {
                 color: new vscode.ThemeColor('editorCodeLens.foreground'),
                 fontStyle: 'italic',
-                margin: '0 0 0 2em'
+                margin: '0 0 0 0.3em'
             },
             isWholeLine: false
         });
@@ -63,7 +63,7 @@ export class InlineTranslationProvider {
                     range: new vscode.Range(block.range.end, block.range.end),
                     renderOptions: {
                         after: {
-                            contentText: ` → ${formattedComment}`,
+                            contentText: `→ ${formattedComment}`,
                             color: new vscode.ThemeColor('editorCodeLens.foreground'),
                             fontStyle: 'italic'
                         }
