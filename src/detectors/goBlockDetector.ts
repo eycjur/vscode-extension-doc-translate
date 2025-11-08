@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
-import { IBlockDetector, TextBlock } from './base/blockDetector';
+import { TextBlock } from './base/blockDetector';
+import { BaseBlockDetector } from './base/baseDetector';
 
-export class GoBlockDetector implements IBlockDetector {
+export class GoBlockDetector extends BaseBlockDetector {
     /**
      * Extract translatable text block at the given position using LSP
      */
@@ -25,58 +26,27 @@ export class GoBlockDetector implements IBlockDetector {
      * Extract comment using LSP (Language Server Protocol)
      */
     private async extractCommentLSP(document: vscode.TextDocument, position: vscode.Position): Promise<TextBlock | null> {
-        try {
-            logger.debug('Requesting document symbols from LSP');
-            const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-                'vscode.executeDocumentSymbolProvider',
-                document.uri
-            );
-
-            if (!symbols || symbols.length === 0) {
-                logger.debug('No symbols returned from LSP');
-                return null;
-            }
-
-            logger.debug(`LSP returned ${symbols.length} top-level symbols`);
-
-            // Find the symbol at the cursor position
-            const symbol = this.findSymbolAtPosition(symbols, position);
-            if (!symbol) {
-                logger.debug('No symbol found at cursor position');
-                return null;
-            }
-
-            logger.debug(`Found symbol: ${symbol.name} (${vscode.SymbolKind[symbol.kind]})`);
-
-            // Check for godoc comment right before the symbol
-            const symbolStartLine = symbol.range.start.line;
-            const comment = this.extractGodocBeforeLine(document, symbolStartLine);
-            if (comment && comment.range.contains(position)) {
-                return { ...comment, type: 'docstring' as const };
-            }
-
-            return null;
-        } catch (error) {
-            logger.error('Failed to use LSP for comment detection', error);
+        const symbols = await this.getSymbolsFromLSP(document);
+        if (!symbols) {
             return null;
         }
-    }
 
-    /**
-     * Recursively find symbol at the given position
-     */
-    private findSymbolAtPosition(symbols: vscode.DocumentSymbol[], position: vscode.Position): vscode.DocumentSymbol | null {
-        for (const symbol of symbols) {
-            if (symbol.range.contains(position)) {
-                if (symbol.children && symbol.children.length > 0) {
-                    const childSymbol = this.findSymbolAtPosition(symbol.children, position);
-                    if (childSymbol) {
-                        return childSymbol;
-                    }
-                }
-                return symbol;
-            }
+        // Find the symbol at the cursor position
+        const symbol = this.findSymbolAtPosition(symbols, position);
+        if (!symbol) {
+            logger.debug('No symbol found at cursor position');
+            return null;
         }
+
+        logger.debug(`Found symbol: ${symbol.name} (${vscode.SymbolKind[symbol.kind]})`);
+
+        // Check for godoc comment right before the symbol
+        const symbolStartLine = symbol.range.start.line;
+        const comment = this.extractGodocBeforeLine(document, symbolStartLine);
+        if (comment && comment.range.contains(position)) {
+            return { ...comment, type: 'docstring' as const };
+        }
+
         return null;
     }
 
@@ -423,17 +393,9 @@ export class GoBlockDetector implements IBlockDetector {
         }
 
         // 2. Extract godoc comments via LSP
-        try {
-            const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-                'vscode.executeDocumentSymbolProvider',
-                document.uri
-            );
-
-            if (symbols && symbols.length > 0) {
-                await this.extractGodocsFromSymbols(document, symbols, blocks);
-            }
-        } catch (error) {
-            logger.error('Failed to get symbols from LSP', error);
+        const symbols = await this.getSymbolsFromLSP(document);
+        if (symbols) {
+            await this.extractGodocsFromSymbols(document, symbols, blocks);
         }
 
         // 3. Extract inline comments
@@ -486,16 +448,4 @@ export class GoBlockDetector implements IBlockDetector {
         }
     }
 
-    /**
-     * Deduplicate blocks by text content
-     */
-    private deduplicateBlocks(blocks: TextBlock[]): TextBlock[] {
-        const seen = new Map<string, TextBlock>();
-        for (const block of blocks) {
-            if (!seen.has(block.text)) {
-                seen.set(block.text, block);
-            }
-        }
-        return Array.from(seen.values());
-    }
 }

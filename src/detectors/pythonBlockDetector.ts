@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
-import { IBlockDetector, TextBlock } from './base/blockDetector';
+import { TextBlock } from './base/blockDetector';
+import { BaseBlockDetector } from './base/baseDetector';
 
-export class PythonBlockDetector implements IBlockDetector {
+export class PythonBlockDetector extends BaseBlockDetector {
     /**
      * Extract translatable text block at the given position using LSP
      * Only detects docstrings via LSP
@@ -26,71 +27,37 @@ export class PythonBlockDetector implements IBlockDetector {
      * Extract docstring using LSP (Language Server Protocol)
      */
     private async extractDocstringLSP(document: vscode.TextDocument, position: vscode.Position): Promise<TextBlock | null> {
-        try {
-            logger.debug('Requesting document symbols from LSP');
-            const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-                'vscode.executeDocumentSymbolProvider',
-                document.uri
-            );
-
-            if (!symbols || symbols.length === 0) {
-                logger.debug('No symbols returned from LSP');
-                return null;
-            }
-
-            logger.debug(`LSP returned ${symbols.length} top-level symbols`);
-
-            // Find the symbol at the cursor position
-            const symbol = this.findSymbolAtPosition(symbols, position);
-            if (!symbol) {
-                logger.debug('No symbol found at cursor position');
-                return null;
-            }
-
-            logger.debug(`Found symbol: ${symbol.name} (${vscode.SymbolKind[symbol.kind]})`);
-
-            // Check if cursor is within a potential docstring area
-            // Docstring typically starts right after the symbol definition line
-            const symbolStartLine = symbol.range.start.line;
-            const symbolBodyStart = symbol.selectionRange.end.line + 1;
-
-            // If cursor is not in the docstring area, return null
-            if (position.line < symbolBodyStart || position.line > symbolBodyStart + 20) {
-                logger.debug(`Cursor not in docstring area (symbol body starts at line ${symbolBodyStart})`);
-                return null;
-            }
-
-            // Try to extract docstring starting from the first line after symbol definition
-            const docstring = this.extractDocstringFromLine(document, symbolBodyStart);
-            if (docstring && docstring.range.contains(position)) {
-                return { ...docstring, type: 'docstring' as const };
-            }
-
-            return null;
-        } catch (error) {
-            logger.error('Failed to use LSP for docstring detection', error);
+        const symbols = await this.getSymbolsFromLSP(document);
+        if (!symbols) {
             return null;
         }
-    }
 
-    /**
-     * Recursively find symbol at the given position
-     */
-    private findSymbolAtPosition(symbols: vscode.DocumentSymbol[], position: vscode.Position): vscode.DocumentSymbol | null {
-        for (const symbol of symbols) {
-            // Check if position is within this symbol's range
-            if (symbol.range.contains(position)) {
-                // Check children first (more specific)
-                if (symbol.children && symbol.children.length > 0) {
-                    const childSymbol = this.findSymbolAtPosition(symbol.children, position);
-                    if (childSymbol) {
-                        return childSymbol;
-                    }
-                }
-                // Return this symbol if no child contains the position
-                return symbol;
-            }
+        // Find the symbol at the cursor position
+        const symbol = this.findSymbolAtPosition(symbols, position);
+        if (!symbol) {
+            logger.debug('No symbol found at cursor position');
+            return null;
         }
+
+        logger.debug(`Found symbol: ${symbol.name} (${vscode.SymbolKind[symbol.kind]})`);
+
+        // Check if cursor is within a potential docstring area
+        // Docstring typically starts right after the symbol definition line
+        const symbolStartLine = symbol.range.start.line;
+        const symbolBodyStart = symbol.selectionRange.end.line + 1;
+
+        // If cursor is not in the docstring area, return null
+        if (position.line < symbolBodyStart || position.line > symbolBodyStart + 20) {
+            logger.debug(`Cursor not in docstring area (symbol body starts at line ${symbolBodyStart})`);
+            return null;
+        }
+
+        // Try to extract docstring starting from the first line after symbol definition
+        const docstring = this.extractDocstringFromLine(document, symbolBodyStart);
+        if (docstring && docstring.range.contains(position)) {
+            return { ...docstring, type: 'docstring' as const };
+        }
+
         return null;
     }
 
@@ -342,16 +309,4 @@ export class PythonBlockDetector implements IBlockDetector {
         }
     }
 
-    /**
-     * Deduplicate blocks by text content
-     */
-    private deduplicateBlocks(blocks: TextBlock[]): TextBlock[] {
-        const seen = new Map<string, TextBlock>();
-        for (const block of blocks) {
-            if (!seen.has(block.text)) {
-                seen.set(block.text, block);
-            }
-        }
-        return Array.from(seen.values());
-    }
 }
