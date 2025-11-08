@@ -13,7 +13,9 @@
     "type": "git",
     "url": "https://github.com/eycjur/vscode-extension-doc-translate.git"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
