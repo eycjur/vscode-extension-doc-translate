@@ -185,13 +185,24 @@ export class PreTranslationService {
     }
 
     /**
-     * Clear pre-translation cache for a file
+     * Invalidate pre-translation cache for a file (keeps decorations visible)
+     * Use this when file is edited - decorations stay until next save/translation
+     */
+    invalidateFileCache(uri: vscode.Uri): void {
+        const fileKey = uri.toString();
+        this.translatedFiles.delete(fileKey);
+        logger.debug(`Invalidated pre-translation cache for: ${uri.fsPath}`);
+    }
+
+    /**
+     * Clear pre-translation cache and decorations for a file
+     * Use this when explicitly clearing cache (e.g., user command)
      */
     clearFileCache(uri: vscode.Uri): void {
         const fileKey = uri.toString();
         this.translatedFiles.delete(fileKey);
         this.inlineProvider.clearFileDecorations(uri);
-        logger.info(`Cleared pre-translation cache for: ${uri.fsPath}`);
+        logger.info(`Cleared pre-translation cache and decorations for: ${uri.fsPath}`);
     }
 
     /**
