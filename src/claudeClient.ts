@@ -82,6 +82,11 @@ Translate this text:
         const timeout = this.getTimeout();
 
         logger.debug(`Using model: ${model}, timeout: ${timeout}ms`);
+        logger.info('='.repeat(60));
+        logger.info('LLM REQUEST PROMPT:');
+        logger.info('-'.repeat(60));
+        logger.info(prompt);
+        logger.info('='.repeat(60));
 
         try {
             const controller = new AbortController();
@@ -121,7 +126,11 @@ Translate this text:
 
             const translation = content.text.trim();
             logger.info('Translation successful');
-            logger.debug('Translation result:', { translation: translation.substring(0, 100) + (translation.length > 100 ? '...' : '') });
+            logger.info('='.repeat(60));
+            logger.info('LLM RESPONSE:');
+            logger.info('-'.repeat(60));
+            logger.info(translation);
+            logger.info('='.repeat(60));
 
             return translation;
         } catch (error: any) {

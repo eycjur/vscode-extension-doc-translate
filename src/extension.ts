@@ -42,7 +42,13 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	logger.info('Configuration watcher registered');
 
-	context.subscriptions.push(hoverDisposable, clearCacheCommand, showLogsCommand, configDisposable);
+	context.subscriptions.push(
+		hoverDisposable,
+		clearCacheCommand,
+		showLogsCommand,
+		configDisposable,
+		{ dispose: () => hoverProvider.dispose() }
+	);
 
 	logger.info('Doc Translate extension activated successfully!');
 	logger.info('='.repeat(60));

@@ -10,6 +10,8 @@ VSCode extension that translates English docstrings and comments in Python code 
   - Comment blocks (consecutive lines starting with `#`)
   - Inline comments (end-of-line comments)
 - **Translation Cache**: Caches translations in memory to avoid redundant API calls
+- **Loading Indicator**: Shows a spinning icon in the status bar while translating
+- **Comprehensive Logging**: Detailed logs showing API requests, responses, and debugging info
 - **Configurable**: Supports both environment variable and VSCode settings for API key configuration
 
 ## Requirements
