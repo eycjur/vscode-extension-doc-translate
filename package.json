@@ -32,7 +32,7 @@
         },
         "docTranslate.model": {
           "type": "string",
-          "default": "claude-sonnet-4-5-20250929",
+          "default": "claude-haiku-4-5-20250929",
           "description": "翻訳に使用するClaudeモデル"
         },
         "docTranslate.timeout": {
