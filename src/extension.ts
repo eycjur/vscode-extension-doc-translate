@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { TranslationHoverProvider } from './translationHoverProvider';
+import { PreTranslationService } from './preTranslationService';
 import { logger } from './logger';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -11,6 +12,13 @@ export function activate(context: vscode.ExtensionContext) {
 	// Create hover provider
 	const hoverProvider = new TranslationHoverProvider();
 	logger.info('Hover provider created');
+
+	// Create pre-translation service
+	const preTranslationService = new PreTranslationService(
+		hoverProvider.claudeClient,
+		hoverProvider.cache
+	);
+	logger.info('Pre-translation service created');
 
 	// Register hover provider for Python files (both saved and unsaved)
 	const hoverDisposable = vscode.languages.registerHoverProvider(
@@ -26,6 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const clearCacheCommand = vscode.commands.registerCommand('doc-translate.clearCache', () => {
 		logger.info('Clear cache command executed');
 		hoverProvider.clearCache();
+		preTranslationService.clearAllCaches();
 		vscode.window.showInformationMessage('Translation cache cleared!');
 	});
 	logger.info('Clear cache command registered');
@@ -45,12 +54,42 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	logger.info('Configuration watcher registered');
 
+	// Pre-translate currently open Python files
+	logger.info('Pre-translating open Python files...');
+	vscode.workspace.textDocuments.forEach(doc => {
+		if (doc.languageId === 'python') {
+			logger.info(`Queuing pre-translation for open file: ${doc.fileName}`);
+			preTranslationService.preTranslateDocument(doc);
+		}
+	});
+
+	// Watch for file open events
+	const onOpenDisposable = vscode.workspace.onDidOpenTextDocument((document) => {
+		if (document.languageId === 'python') {
+			logger.info(`Python file opened: ${document.fileName}`);
+			preTranslationService.preTranslateDocument(document);
+		}
+	});
+	logger.info('File open watcher registered');
+
+	// Watch for file changes (to invalidate pre-translation cache)
+	const onChangeDisposable = vscode.workspace.onDidChangeTextDocument((event) => {
+		if (event.document.languageId === 'python') {
+			logger.debug(`Python file changed: ${event.document.fileName}, clearing pre-translation cache`);
+			preTranslationService.clearFileCache(event.document.uri);
+		}
+	});
+	logger.info('File change watcher registered');
+
 	context.subscriptions.push(
 		hoverDisposable,
 		clearCacheCommand,
 		showLogsCommand,
 		configDisposable,
-		{ dispose: () => hoverProvider.dispose() }
+		onOpenDisposable,
+		onChangeDisposable,
+		{ dispose: () => hoverProvider.dispose() },
+		{ dispose: () => preTranslationService.dispose() }
 	);
 
 	logger.info('Doc Translate extension activated successfully!');

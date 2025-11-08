@@ -5,8 +5,8 @@ import { PythonBlockDetector } from './pythonBlockDetector';
 import { logger } from './logger';
 
 export class TranslationHoverProvider implements vscode.HoverProvider {
-    private claudeClient: ClaudeClient;
-    private cache: TranslationCache;
+    public claudeClient: ClaudeClient;
+    public cache: TranslationCache;
     private detector: PythonBlockDetector;
     private statusBarItem: vscode.StatusBarItem;
 

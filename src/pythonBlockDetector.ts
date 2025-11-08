@@ -117,7 +117,7 @@ export class PythonBlockDetector {
     /**
      * Extract docstring starting from a specific line
      */
-    private extractDocstringFromLine(document: vscode.TextDocument, startLine: number): TextBlock | null {
+    public extractDocstringFromLine(document: vscode.TextDocument, startLine: number): TextBlock | null {
         if (startLine >= document.lineCount) {
             return null;
         }
