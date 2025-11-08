@@ -76,14 +76,26 @@ export class PreTranslationService {
 
             if (blocksToTranslate.length === 0) {
                 logger.info('All blocks already cached, no translation needed');
+                // Display cached translations
+                await this.inlineProvider.updateInlineTranslations(document, blocks);
             } else {
                 logger.info(`Translating ${blocksToTranslate.length} blocks with max ${MAX_CONCURRENT_REQUESTS} concurrent requests`);
 
+                // Display cached translations first
+                if (cachedCount > 0) {
+                    await this.inlineProvider.updateInlineTranslations(document, blocks);
+                }
+
                 // Translate blocks in parallel with concurrency limit
-                await this.translateBlocksConcurrently(blocksToTranslate, blocks.length, (current, total) => {
-                    translated = cachedCount + current;
-                    this.statusBarItem.text = `$(sync~spin) Translating ${translated}/${total}...`;
-                });
+                await this.translateBlocksConcurrently(
+                    document,
+                    blocksToTranslate,
+                    blocks,
+                    (current, total) => {
+                        translated = cachedCount + current;
+                        this.statusBarItem.text = `$(sync~spin) Translating ${translated}/${total}...`;
+                    }
+                );
 
                 translated = blocks.length;
             }
@@ -94,9 +106,6 @@ export class PreTranslationService {
 
             // Mark as translated
             this.translatedFiles.add(fileKey);
-
-            // Update inline translations
-            await this.inlineProvider.updateInlineTranslations(document, blocks);
 
             // Show completion message
             this.statusBarItem.text = `$(check) Translated ${translated} blocks`;
@@ -113,10 +122,12 @@ export class PreTranslationService {
 
     /**
      * Translate blocks concurrently with a limit on concurrent requests
+     * Updates inline translations progressively as each block completes
      */
     private async translateBlocksConcurrently(
-        blocks: Array<{ text: string; range: vscode.Range; type: 'docstring' | 'comment' }>,
-        totalBlocks: number,
+        document: vscode.TextDocument,
+        blocksToTranslate: Array<{ text: string; range: vscode.Range; type: 'docstring' | 'comment' }>,
+        allBlocks: Array<{ text: string; range: vscode.Range; type: 'docstring' | 'comment' }>,
         onProgress: (current: number, total: number) => void
     ): Promise<void> {
         let completed = 0;
@@ -129,9 +140,9 @@ export class PreTranslationService {
         const targetLang = config.get<string>('targetLang') || 'ja';
 
         // Process blocks in batches
-        while (index < blocks.length) {
+        while (index < blocksToTranslate.length) {
             // Get next batch (up to MAX_CONCURRENT_REQUESTS)
-            const batch = blocks.slice(index, index + MAX_CONCURRENT_REQUESTS);
+            const batch = blocksToTranslate.slice(index, index + MAX_CONCURRENT_REQUESTS);
             index += batch.length;
 
             // Translate all blocks in this batch concurrently
@@ -141,8 +152,11 @@ export class PreTranslationService {
                     const translation = await provider.translate(block.text, sourceLang, targetLang);
                     this.cache.set(block.text, translation);
                     completed++;
-                    onProgress(completed, totalBlocks);
-                    logger.debug(`Completed ${completed}/${blocks.length}`);
+                    onProgress(completed, allBlocks.length);
+                    logger.debug(`Completed ${completed}/${blocksToTranslate.length}`);
+
+                    // Update inline translations progressively after each block completes
+                    await this.inlineProvider.updateInlineTranslations(document, allBlocks);
                 } catch (error) {
                     logger.error(`Failed to translate block: ${block.text.substring(0, 30)}...`, error);
                     // Continue with next block even if one fails
@@ -153,7 +167,7 @@ export class PreTranslationService {
             await Promise.all(promises);
         }
 
-        logger.info(`Concurrent translation completed: ${completed}/${blocks.length} blocks translated`);
+        logger.info(`Concurrent translation completed: ${completed}/${blocksToTranslate.length} blocks translated`);
     }
 
     /**
