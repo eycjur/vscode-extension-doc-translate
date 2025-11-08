@@ -14,10 +14,30 @@
   "contributes": {
     "commands": [
       {
-        "command": "doc-translate.helloWorld",
-        "title": "Hello World"
+        "command": "doc-translate.clearCache",
+        "title": "Doc Translate: Clear Translation Cache"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Doc Translate",
+      "properties": {
+        "docTranslate.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API Key for Claude translation. Environment variable ANTHROPIC_API_KEY takes precedence."
+        },
+        "docTranslate.model": {
+          "type": "string",
+          "default": "claude-3-5-sonnet-20241022",
+          "description": "Claude model to use for translation"
+        },
+        "docTranslate.timeout": {
+          "type": "number",
+          "default": 30000,
+          "description": "API request timeout in milliseconds"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -26,6 +46,9 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.105.0",

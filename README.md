@@ -1,51 +1,60 @@
-# doc-translate README
+# Doc Translate
 
-This is the README for your extension "doc-translate". After writing up a brief description, we recommend including the following sections.
+VSCode extension that translates English docstrings and comments in Python code to Japanese using Claude API.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- **Hover Translation**: Hover over Python docstrings or comments to see Japanese translations
+- **Smart Block Detection**: Automatically detects and translates:
+  - Docstrings (both `"""` and `'''` styles)
+  - Comment blocks (consecutive lines starting with `#`)
+  - Inline comments (end-of-line comments)
+- **Translation Cache**: Caches translations in memory to avoid redundant API calls
+- **Configurable**: Supports both environment variable and VSCode settings for API key configuration
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- **Anthropic API Key**: You need a valid Anthropic API key to use this extension
+  - Set `ANTHROPIC_API_KEY` environment variable (recommended), or
+  - Configure `docTranslate.anthropicApiKey` in VSCode settings
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+* `docTranslate.anthropicApiKey`: Anthropic API Key for Claude translation (environment variable `ANTHROPIC_API_KEY` takes precedence)
+* `docTranslate.model`: Claude model to use for translation (default: `claude-3-5-sonnet-20241022`)
+* `docTranslate.timeout`: API request timeout in milliseconds (default: `30000`)
+
+## Usage
+
+1. Set your Anthropic API key:
+   - **Option 1 (Recommended)**: Set environment variable `ANTHROPIC_API_KEY`
+   - **Option 2**: Set `docTranslate.anthropicApiKey` in VSCode settings
+
+2. Open a Python file
+
+3. Hover your cursor over any docstring or comment
+
+4. The Japanese translation will appear in the hover tooltip
+
+## Commands
+
+* `Doc Translate: Clear Translation Cache`: Clear the in-memory translation cache
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+None at this time.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+Initial MVP release:
+- Hover provider for Python docstrings and comments
+- Claude API integration
+- Translation caching
+- Configurable API key and model settings
 
 ---
 
