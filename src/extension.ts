@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { TranslationHoverProvider } from './translationHoverProvider';
+import { ClaudeClient } from './claudeClient';
+import { TranslationCache } from './translationCache';
 import { PreTranslationService } from './preTranslationService';
 import { InlineTranslationProvider } from './inlineTranslationProvider';
 import { logger } from './logger';
@@ -10,36 +11,27 @@ export function activate(context: vscode.ExtensionContext) {
 	logger.info(`VSCode version: ${vscode.version}`);
 	logger.info(`Extension path: ${context.extensionPath}`);
 
-	// Create hover provider
-	const hoverProvider = new TranslationHoverProvider();
-	logger.info('Hover provider created');
+	// Create Claude client and cache
+	const claudeClient = new ClaudeClient();
+	const cache = new TranslationCache();
+	logger.info('Claude client and cache created');
 
 	// Create inline translation provider
-	const inlineProvider = new InlineTranslationProvider(hoverProvider.cache);
+	const inlineProvider = new InlineTranslationProvider(cache);
 	logger.info('Inline translation provider created');
 
 	// Create pre-translation service
 	const preTranslationService = new PreTranslationService(
-		hoverProvider.claudeClient,
-		hoverProvider.cache,
+		claudeClient,
+		cache,
 		inlineProvider
 	);
 	logger.info('Pre-translation service created');
 
-	// Register hover provider for Python files (both saved and unsaved)
-	const hoverDisposable = vscode.languages.registerHoverProvider(
-		[
-			{ scheme: 'file', language: 'python' },
-			{ scheme: 'untitled', language: 'python' }
-		],
-		hoverProvider
-	);
-	logger.info('Hover provider registered for Python files (file and untitled schemes)');
-
 	// Register command to clear translation cache
 	const clearCacheCommand = vscode.commands.registerCommand('doc-translate.clearCache', () => {
 		logger.info('Clear cache command executed');
-		hoverProvider.clearCache();
+		cache.clear();
 		preTranslationService.clearAllCaches();
 		vscode.window.showInformationMessage('Translation cache cleared!');
 	});
@@ -54,8 +46,8 @@ export function activate(context: vscode.ExtensionContext) {
 	// Watch for configuration changes
 	const configDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
 		if (event.affectsConfiguration('docTranslate')) {
-			logger.info('Configuration changed, updating hover provider');
-			hoverProvider.updateConfiguration();
+			logger.info('Configuration changed, updating Claude client');
+			claudeClient.updateConfiguration();
 		}
 	});
 	logger.info('Configuration watcher registered');
@@ -103,7 +95,6 @@ export function activate(context: vscode.ExtensionContext) {
 	logger.info('Editor change watcher registered');
 
 	context.subscriptions.push(
-		hoverDisposable,
 		clearCacheCommand,
 		showLogsCommand,
 		configDisposable,
