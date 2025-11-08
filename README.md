@@ -31,7 +31,7 @@ PythonコードのdocstringやコメントをClaude APIで日本語に翻訳す�
 この拡張機能は以下の設定項目を提供します：
 
 * `docTranslate.anthropicApiKey`: Claude翻訳用のAnthropic APIキー（環境変数 `ANTHROPIC_API_KEY` が優先されます）
-* `docTranslate.model`: 翻訳に使用するClaudeモデル（デフォルト: `claude-haiku-4-5-20250929`）
+* `docTranslate.model`: 翻訳に使用するClaudeモデル（デフォルト: `claude-haiku-4-5-20251001`）
 * `docTranslate.timeout`: APIリクエストのタイムアウト（ミリ秒、デフォルト: `30000`）
 
 ## 使い方
