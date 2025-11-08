@@ -136,7 +136,6 @@ export class PreTranslationService {
         // Get translation provider and language settings
         const provider = TranslationProviderFactory.getProvider();
         const config = vscode.workspace.getConfiguration('docTranslate');
-        const sourceLang = config.get<string>('sourceLang') || 'en';
         const targetLang = config.get<string>('targetLang') || 'ja';
 
         // Process blocks in batches
@@ -149,7 +148,7 @@ export class PreTranslationService {
             const promises = batch.map(async (block) => {
                 try {
                     logger.debug(`Translating block text (${block.text.length} chars): "${block.text.substring(0, 100)}..."`);
-                    const translation = await provider.translate(block.text, sourceLang, targetLang);
+                    const translation = await provider.translate(block.text, targetLang);
                     this.cache.set(block.text, translation);
                     completed++;
                     onProgress(completed, allBlocks.length);

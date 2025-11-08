@@ -3,13 +3,12 @@
  */
 export interface ITranslationProvider {
     /**
-     * Translate text from source language to target language
+     * Translate text to target language
      * @param text Text to translate
-     * @param sourceLang Source language code (e.g., "en", "ja")
      * @param targetLang Target language code (e.g., "en", "ja")
      * @returns Translated text
      */
-    translate(text: string, sourceLang: string, targetLang: string): Promise<string>;
+    translate(text: string, targetLang: string): Promise<string>;
 
     /**
      * Update configuration (API keys, model, etc.)
@@ -27,7 +26,6 @@ export type LLMProvider = 'anthropic' | 'openai' | 'gemini';
  */
 export interface TranslationConfig {
     provider: LLMProvider;
-    sourceLang: string;
     targetLang: string;
     apiKey?: string;
     model?: string;

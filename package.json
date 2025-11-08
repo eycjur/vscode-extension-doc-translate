@@ -35,11 +35,6 @@
           "default": "anthropic",
           "description": "使用するLLMプロバイダー"
         },
-        "docTranslate.sourceLang": {
-          "type": "string",
-          "default": "en",
-          "description": "翻訳元の言語コード（例：en, ja, zh, ko, fr, de, es, it, pt, ru）"
-        },
         "docTranslate.targetLang": {
           "type": "string",
           "default": "ja",

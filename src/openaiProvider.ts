@@ -65,7 +65,7 @@ export class OpenAIProvider implements ITranslationProvider {
         return config.get<number>('timeout') || 30000;
     }
 
-    private buildPrompt(text: string, sourceLang: string, targetLang: string): string {
+    private buildPrompt(text: string, targetLang: string): string {
         const langMap: { [key: string]: string } = {
             'en': 'English',
             'ja': 'Japanese',
@@ -79,11 +79,10 @@ export class OpenAIProvider implements ITranslationProvider {
             'ru': 'Russian'
         };
 
-        const sourceLanguage = langMap[sourceLang] || sourceLang;
         const targetLanguage = langMap[targetLang] || targetLang;
 
         return `You are a translation assistant specialized in software engineering context.
-Translate the given text from ${sourceLanguage} into natural ${targetLanguage}.
+Translate the given text into natural ${targetLanguage}.
 
 Rules:
 
@@ -91,14 +90,14 @@ Preserve technical terms (library names, function names, class names, variable n
 
 Prefer natural ${targetLanguage} rather than literal translation.
 
-Output ONLY the translated ${targetLanguage} text. No explanation, no ${sourceLanguage}.
+Output ONLY the translated ${targetLanguage} text. No explanation.
 
 Translate this text:
 ${text}`;
     }
 
-    async translate(text: string, sourceLang: string, targetLang: string): Promise<string> {
-        logger.info(`OpenAI translation request received (text length: ${text.length} chars, ${sourceLang} -> ${targetLang})`);
+    async translate(text: string, targetLang: string): Promise<string> {
+        logger.info(`OpenAI translation request received (text length: ${text.length} chars, target: ${targetLang})`);
         logger.debug('Text to translate:', { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') });
 
         if (!this.client) {
@@ -112,7 +111,7 @@ ${text}`;
             }
         }
 
-        const prompt = this.buildPrompt(text, sourceLang, targetLang);
+        const prompt = this.buildPrompt(text, targetLang);
         const model = this.getModel();
         const timeout = this.getTimeout();
 
