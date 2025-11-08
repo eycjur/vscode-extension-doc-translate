@@ -94,6 +94,12 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	logger.info('Editor change watcher registered');
 
+	// Watch for text selection changes (to hide translation when selecting docstrings)
+	const onSelectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection(() => {
+		inlineProvider.refreshVisibleEditors();
+	});
+	logger.info('Selection change watcher registered');
+
 	context.subscriptions.push(
 		clearCacheCommand,
 		showLogsCommand,
@@ -102,6 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
 		onChangeDisposable,
 		onSaveDisposable,
 		onEditorChangeDisposable,
+		onSelectionChangeDisposable,
 		{ dispose: () => preTranslationService.dispose() },
 		{ dispose: () => inlineProvider.dispose() }
 	);

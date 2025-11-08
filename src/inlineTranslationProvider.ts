@@ -8,6 +8,7 @@ export class InlineTranslationProvider {
     private cache: TranslationCache;
     private commentDecorations = new Map<string, vscode.DecorationOptions[]>();
     private docstringDecorations = new Map<string, vscode.DecorationOptions[]>();
+    private allDocstringDecorations = new Map<string, vscode.DecorationOptions[]>();
 
     constructor(cache: TranslationCache) {
         this.cache = cache;
@@ -128,28 +129,63 @@ export class InlineTranslationProvider {
 
         // Store decorations for this file
         this.commentDecorations.set(fileKey, commentDecorations);
-        this.docstringDecorations.set(fileKey, docstringDecorations);
+        this.allDocstringDecorations.set(fileKey, docstringDecorations);
 
-        // Apply decorations to visible editors
-        this.applyDecorationsToVisibleEditors(document);
+        // Apply decorations to visible editors (with selection filtering)
+        this.updateDecorationsForEditor(document);
 
         logger.info(`Applied ${commentDecorations.length} comment translations and ${docstringDecorations.length} docstring translations`);
     }
 
     /**
-     * Apply decorations to all visible editors showing this document
+     * Update decorations for a document, filtering out decorations that overlap with selections
      */
-    private applyDecorationsToVisibleEditors(document: vscode.TextDocument): void {
+    private updateDecorationsForEditor(document: vscode.TextDocument): void {
         const fileKey = document.uri.toString();
-        const commentDecorations = this.commentDecorations.get(fileKey) || [];
-        const docstringDecorations = this.docstringDecorations.get(fileKey) || [];
 
         for (const editor of vscode.window.visibleTextEditors) {
             if (editor.document.uri.toString() === fileKey) {
-                editor.setDecorations(this.commentDecorationType, commentDecorations);
-                editor.setDecorations(this.docstringDecorationType, docstringDecorations);
+                this.applyDecorationsToEditor(editor);
             }
         }
+    }
+
+    /**
+     * Apply decorations to an editor, excluding decorations that overlap with selections
+     */
+    private applyDecorationsToEditor(editor: vscode.TextEditor): void {
+        const fileKey = editor.document.uri.toString();
+        const commentDecorations = this.commentDecorations.get(fileKey) || [];
+        const allDocstringDecorations = this.allDocstringDecorations.get(fileKey) || [];
+
+        // Filter out docstring decorations that overlap with current selections
+        const filteredDocstringDecorations = this.filterDecorationsBySelection(
+            allDocstringDecorations,
+            editor.selections
+        );
+
+        editor.setDecorations(this.commentDecorationType, commentDecorations);
+        editor.setDecorations(this.docstringDecorationType, filteredDocstringDecorations);
+    }
+
+    /**
+     * Filter decorations by removing those that overlap with any selection
+     */
+    private filterDecorationsBySelection(
+        decorations: vscode.DecorationOptions[],
+        selections: readonly vscode.Selection[]
+    ): vscode.DecorationOptions[] {
+        return decorations.filter(decoration => {
+            // Check if this decoration overlaps with any selection
+            for (const selection of selections) {
+                if (decoration.range.intersection(selection)) {
+                    // This decoration overlaps with a selection, exclude it
+                    return false;
+                }
+            }
+            // No overlap, include this decoration
+            return true;
+        });
     }
 
     /**
@@ -158,7 +194,7 @@ export class InlineTranslationProvider {
     clearFileDecorations(uri: vscode.Uri): void {
         const fileKey = uri.toString();
         this.commentDecorations.delete(fileKey);
-        this.docstringDecorations.delete(fileKey);
+        this.allDocstringDecorations.delete(fileKey);
 
         // Clear decorations from visible editors
         for (const editor of vscode.window.visibleTextEditors) {
@@ -176,7 +212,7 @@ export class InlineTranslationProvider {
      */
     clearAllDecorations(): void {
         this.commentDecorations.clear();
-        this.docstringDecorations.clear();
+        this.allDocstringDecorations.clear();
 
         // Clear from all visible editors
         for (const editor of vscode.window.visibleTextEditors) {
@@ -188,15 +224,11 @@ export class InlineTranslationProvider {
     }
 
     /**
-     * Refresh decorations for visible editors (called when editor changes)
+     * Refresh decorations for visible editors (called when editor or selection changes)
      */
     refreshVisibleEditors(): void {
         for (const editor of vscode.window.visibleTextEditors) {
-            const fileKey = editor.document.uri.toString();
-            const commentDecorations = this.commentDecorations.get(fileKey) || [];
-            const docstringDecorations = this.docstringDecorations.get(fileKey) || [];
-            editor.setDecorations(this.commentDecorationType, commentDecorations);
-            editor.setDecorations(this.docstringDecorationType, docstringDecorations);
+            this.applyDecorationsToEditor(editor);
         }
     }
 
