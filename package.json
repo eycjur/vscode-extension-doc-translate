@@ -1,8 +1,8 @@
 {
   "name": "doc-translate",
   "displayName": "vscode-extension-doc-translate",
-  "description": "",
-  "version": "0.0.1",
+  "description": "Translate Python docstrings and comments to Japanese using Claude API",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.105.0"
   },
