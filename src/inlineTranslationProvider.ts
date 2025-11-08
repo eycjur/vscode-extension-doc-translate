@@ -169,17 +169,22 @@ export class InlineTranslationProvider {
     }
 
     /**
-     * Filter decorations by removing those that overlap with any selection
+     * Filter decorations by removing those that overlap with any selection or cursor position
      */
     private filterDecorationsBySelection(
         decorations: vscode.DecorationOptions[],
         selections: readonly vscode.Selection[]
     ): vscode.DecorationOptions[] {
         return decorations.filter(decoration => {
-            // Check if this decoration overlaps with any selection
+            // Check if this decoration overlaps with any selection or cursor
             for (const selection of selections) {
+                // Check for selection range overlap
                 if (decoration.range.intersection(selection)) {
-                    // This decoration overlaps with a selection, exclude it
+                    return false;
+                }
+
+                // Check if cursor is inside this decoration (even without selection)
+                if (selection.isEmpty && decoration.range.contains(selection.active)) {
                     return false;
                 }
             }
