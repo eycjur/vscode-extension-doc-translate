@@ -6,7 +6,7 @@ import { JavaScriptBlockDetector } from '../javascriptBlockDetector';
 import { GoBlockDetector } from '../goBlockDetector';
 
 suite('Block Detector Test Suite', () => {
-    const fixturesPath = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
+    const assetsPath = path.join(__dirname, '..', '..', 'src', 'test', 'assets');
 
     suite('PythonBlockDetector', () => {
         let detector: PythonBlockDetector;
@@ -16,7 +16,7 @@ suite('Block Detector Test Suite', () => {
         });
 
         test('should extract blocks from Python sample', async () => {
-            const samplePath = path.join(fixturesPath, 'sample.py');
+            const samplePath = path.join(assetsPath, 'sample.py');
             const uri = vscode.Uri.file(samplePath);
             const document = await vscode.workspace.openTextDocument(uri);
 
@@ -53,7 +53,7 @@ suite('Block Detector Test Suite', () => {
         });
 
         test('should extract blocks from JavaScript sample', async () => {
-            const samplePath = path.join(fixturesPath, 'sample.js');
+            const samplePath = path.join(assetsPath, 'sample.js');
             const uri = vscode.Uri.file(samplePath);
             const document = await vscode.workspace.openTextDocument(uri);
 
@@ -82,7 +82,7 @@ suite('Block Detector Test Suite', () => {
         });
 
         test('should extract blocks from TypeScript sample', async () => {
-            const samplePath = path.join(fixturesPath, 'sample.ts');
+            const samplePath = path.join(assetsPath, 'sample.ts');
             const uri = vscode.Uri.file(samplePath);
             const document = await vscode.workspace.openTextDocument(uri);
 
@@ -108,7 +108,7 @@ suite('Block Detector Test Suite', () => {
         });
 
         test('should extract blocks from Go sample', async () => {
-            const samplePath = path.join(fixturesPath, 'sample.go');
+            const samplePath = path.join(assetsPath, 'sample.go');
             const uri = vscode.Uri.file(samplePath);
             const document = await vscode.workspace.openTextDocument(uri);
 
