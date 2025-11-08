@@ -12,12 +12,15 @@ export function activate(context: vscode.ExtensionContext) {
 	const hoverProvider = new TranslationHoverProvider();
 	logger.info('Hover provider created');
 
-	// Register hover provider for Python files
+	// Register hover provider for Python files (both saved and unsaved)
 	const hoverDisposable = vscode.languages.registerHoverProvider(
-		{ scheme: 'file', language: 'python' },
+		[
+			{ scheme: 'file', language: 'python' },
+			{ scheme: 'untitled', language: 'python' }
+		],
 		hoverProvider
 	);
-	logger.info('Hover provider registered for Python files');
+	logger.info('Hover provider registered for Python files (file and untitled schemes)');
 
 	// Register command to clear translation cache
 	const clearCacheCommand = vscode.commands.registerCommand('doc-translate.clearCache', () => {
