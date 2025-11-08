@@ -1,8 +1,8 @@
 {
   "name": "doc-translate",
   "displayName": "Doc Translate",
-  "description": "Claude APIを使用してPythonのdocstringとコメントを日本語に翻訳",
-  "version": "0.3.0",
+  "description": "複数のLLM（Claude, OpenAI, Gemini）を使用してコードのdocstringとコメントを翻訳（Python, JS, TS, Go対応）",
+  "version": "0.4.0",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -25,15 +25,68 @@
     "configuration": {
       "title": "Doc Translate",
       "properties": {
+        "docTranslate.provider": {
+          "type": "string",
+          "enum": [
+            "anthropic",
+            "openai",
+            "gemini"
+          ],
+          "default": "anthropic",
+          "description": "使用するLLMプロバイダー"
+        },
+        "docTranslate.sourceLang": {
+          "type": "string",
+          "default": "en",
+          "description": "翻訳元の言語コード（例：en, ja, zh, ko, fr, de, es, it, pt, ru）"
+        },
+        "docTranslate.targetLang": {
+          "type": "string",
+          "default": "ja",
+          "description": "翻訳先の言語コード（例：en, ja, zh, ko, fr, de, es, it, pt, ru）"
+        },
+        "docTranslate.supportedLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "python",
+            "javascript",
+            "typescript",
+            "go"
+          ],
+          "description": "翻訳対象のプログラミング言語"
+        },
         "docTranslate.anthropicApiKey": {
           "type": "string",
           "default": "",
-          "description": "Claude翻訳用のAnthropic APIキー（環境変数 ANTHROPIC_API_KEY が優先されます）"
+          "description": "Anthropic APIキー（環境変数 ANTHROPIC_API_KEY が優先されます）"
         },
         "docTranslate.model": {
           "type": "string",
           "default": "claude-haiku-4-5-20251001",
-          "description": "翻訳に使用するClaudeモデル"
+          "description": "翻訳に使用するAnthropicモデル"
+        },
+        "docTranslate.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI APIキー（環境変数 OPENAI_API_KEY が優先されます）"
+        },
+        "docTranslate.openaiModel": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "翻訳に使用するOpenAIモデル"
+        },
+        "docTranslate.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Gemini APIキー（環境変数 GEMINI_API_KEY が優先されます）"
+        },
+        "docTranslate.geminiModel": {
+          "type": "string",
+          "default": "gemini-2.0-flash-exp",
+          "description": "翻訳に使用するGeminiモデル"
         },
         "docTranslate.timeout": {
           "type": "number",
@@ -52,17 +105,19 @@
     "test": "vscode-test"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0"
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@google/generative-ai": "^0.24.1",
+    "openai": "^6.8.1"
   },
   "devDependencies": {
-    "@types/vscode": "^1.105.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.105.0",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
-    "eslint": "^9.36.0",
-    "typescript": "^5.9.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.36.0",
+    "typescript": "^5.9.3"
   }
 }

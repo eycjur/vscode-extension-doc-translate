@@ -2,20 +2,19 @@ import * as vscode from 'vscode';
 import { logger } from './logger';
 import { IBlockDetector, TextBlock } from './blockDetector';
 
-export class PythonBlockDetector implements IBlockDetector {
+export class JavaScriptBlockDetector implements IBlockDetector {
     /**
      * Extract translatable text block at the given position using LSP
-     * Only detects docstrings via LSP
      */
     async extractBlock(document: vscode.TextDocument, position: vscode.Position): Promise<TextBlock | null> {
-        logger.debug(`Extracting block at position: line ${position.line}, char ${position.character}`);
+        logger.debug(`Extracting JS/TS block at position: line ${position.line}, char ${position.character}`);
 
-        // Try to detect docstring using LSP
-        const docstring = await this.extractDocstringLSP(document, position);
-        if (docstring) {
-            logger.info(`Detected docstring via LSP (${docstring.range.start.line}-${docstring.range.end.line})`);
-            logger.debug('Docstring content:', { text: docstring.text.substring(0, 50) + '...' });
-            return docstring;
+        // Try to detect JSDoc or multi-line comment using LSP
+        const comment = await this.extractCommentLSP(document, position);
+        if (comment) {
+            logger.info(`Detected comment via LSP (${comment.range.start.line}-${comment.range.end.line})`);
+            logger.debug('Comment content:', { text: comment.text.substring(0, 50) + '...' });
+            return comment;
         }
 
         logger.debug('No translatable block found at this position');
@@ -23,9 +22,9 @@ export class PythonBlockDetector implements IBlockDetector {
     }
 
     /**
-     * Extract docstring using LSP (Language Server Protocol)
+     * Extract comment using LSP (Language Server Protocol)
      */
-    private async extractDocstringLSP(document: vscode.TextDocument, position: vscode.Position): Promise<TextBlock | null> {
+    private async extractCommentLSP(document: vscode.TextDocument, position: vscode.Position): Promise<TextBlock | null> {
         try {
             logger.debug('Requesting document symbols from LSP');
             const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
@@ -49,26 +48,16 @@ export class PythonBlockDetector implements IBlockDetector {
 
             logger.debug(`Found symbol: ${symbol.name} (${vscode.SymbolKind[symbol.kind]})`);
 
-            // Check if cursor is within a potential docstring area
-            // Docstring typically starts right after the symbol definition line
+            // Check for JSDoc comment right before the symbol
             const symbolStartLine = symbol.range.start.line;
-            const symbolBodyStart = symbol.selectionRange.end.line + 1;
-
-            // If cursor is not in the docstring area, return null
-            if (position.line < symbolBodyStart || position.line > symbolBodyStart + 20) {
-                logger.debug(`Cursor not in docstring area (symbol body starts at line ${symbolBodyStart})`);
-                return null;
-            }
-
-            // Try to extract docstring starting from the first line after symbol definition
-            const docstring = this.extractDocstringFromLine(document, symbolBodyStart);
-            if (docstring && docstring.range.contains(position)) {
-                return { ...docstring, type: 'docstring' as const };
+            const comment = this.extractJSDocBeforeLine(document, symbolStartLine);
+            if (comment && comment.range.contains(position)) {
+                return { ...comment, type: 'docstring' as const };
             }
 
             return null;
         } catch (error) {
-            logger.error('Failed to use LSP for docstring detection', error);
+            logger.error('Failed to use LSP for comment detection', error);
             return null;
         }
     }
@@ -78,16 +67,13 @@ export class PythonBlockDetector implements IBlockDetector {
      */
     private findSymbolAtPosition(symbols: vscode.DocumentSymbol[], position: vscode.Position): vscode.DocumentSymbol | null {
         for (const symbol of symbols) {
-            // Check if position is within this symbol's range
             if (symbol.range.contains(position)) {
-                // Check children first (more specific)
                 if (symbol.children && symbol.children.length > 0) {
                     const childSymbol = this.findSymbolAtPosition(symbol.children, position);
                     if (childSymbol) {
                         return childSymbol;
                     }
                 }
-                // Return this symbol if no child contains the position
                 return symbol;
             }
         }
@@ -95,7 +81,61 @@ export class PythonBlockDetector implements IBlockDetector {
     }
 
     /**
-     * Extract docstring starting from a specific line
+     * Extract JSDoc comment right before a specific line
+     */
+    private extractJSDocBeforeLine(document: vscode.TextDocument, line: number): Omit<TextBlock, 'type'> | null {
+        // Search backwards from the line for JSDoc comment
+        for (let i = line - 1; i >= Math.max(0, line - 10); i--) {
+            const lineText = document.lineAt(i).text.trim();
+
+            // If we hit code, stop searching
+            if (lineText && !lineText.startsWith('*') && !lineText.startsWith('/**') && !lineText.startsWith('*/') && !lineText.startsWith('//')) {
+                break;
+            }
+
+            // Found end of JSDoc
+            if (lineText.includes('*/')) {
+                return this.extractJSDocEndingAtLine(document, i);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract JSDoc comment ending at a specific line
+     */
+    private extractJSDocEndingAtLine(document: vscode.TextDocument, endLine: number): Omit<TextBlock, 'type'> | null {
+        const endLineText = document.lineAt(endLine).text;
+        const endCol = endLineText.indexOf('*/') + 2;
+
+        // Search backwards for the start
+        for (let i = endLine; i >= 0; i--) {
+            const lineText = document.lineAt(i).text;
+            const startIndex = lineText.indexOf('/**');
+            if (startIndex !== -1) {
+                const startCol = startIndex;
+                const range = new vscode.Range(i, startCol, endLine, endCol);
+                const fullText = document.getText(range);
+
+                // Extract content (remove /** and */)
+                const content = fullText
+                    .replace(/^\/\*\*/, '')
+                    .replace(/\*\/$/, '')
+                    .split('\n')
+                    .map(line => line.trim().replace(/^\*\s?/, ''))
+                    .join('\n')
+                    .trim();
+
+                return { text: content, range };
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract docstring starting from a specific line (JSDoc or multi-line comment)
      */
     public extractDocstringFromLine(document: vscode.TextDocument, startLine: number): Omit<TextBlock, 'type'> | null {
         if (startLine >= document.lineCount) {
@@ -104,52 +144,52 @@ export class PythonBlockDetector implements IBlockDetector {
 
         const firstLine = document.lineAt(startLine).text.trim();
 
-        // Check for triple quotes
-        const tripleDoubleQuote = '"""';
-        const tripleSingleQuote = "'''";
+        // Check for JSDoc
+        if (firstLine.startsWith('/**')) {
+            return this.extractMultiLineComment(document, startLine, '/**', '*/');
+        }
 
-        for (const quote of [tripleDoubleQuote, tripleSingleQuote]) {
-            if (firstLine.includes(quote)) {
-                return this.extractDocstringWithQuoteFromLine(document, startLine, quote);
-            }
+        // Check for multi-line comment
+        if (firstLine.startsWith('/*')) {
+            return this.extractMultiLineComment(document, startLine, '/*', '*/');
         }
 
         return null;
     }
 
     /**
-     * Extract docstring with specific quote type from a starting line
+     * Extract multi-line comment with specific delimiters
      */
-    private extractDocstringWithQuoteFromLine(
+    private extractMultiLineComment(
         document: vscode.TextDocument,
         startLine: number,
-        quote: string
+        startDelimiter: string,
+        endDelimiter: string
     ): Omit<TextBlock, 'type'> | null {
         const firstLineText = document.lineAt(startLine).text;
-        const quoteIndex = firstLineText.indexOf(quote);
+        const startIndex = firstLineText.indexOf(startDelimiter);
 
-        if (quoteIndex === -1) {
+        if (startIndex === -1) {
             return null;
         }
 
-        const startCol = quoteIndex;
+        const startCol = startIndex;
         let endLine = startLine;
-        let endCol = startCol + quote.length;
+        let endCol = startCol + startDelimiter.length;
 
-        // Check if it's a single-line docstring
-        const nextQuoteIndex = firstLineText.indexOf(quote, startCol + quote.length);
-        if (nextQuoteIndex !== -1) {
-            // Single line docstring
-            endCol = nextQuoteIndex + quote.length;
+        // Check if it's a single-line comment
+        const closeIndex = firstLineText.indexOf(endDelimiter, startCol + startDelimiter.length);
+        if (closeIndex !== -1) {
+            endCol = closeIndex + endDelimiter.length;
         } else {
-            // Multi-line docstring - search for closing quote
+            // Multi-line comment - search for closing delimiter
             let foundEnd = false;
             for (let line = startLine + 1; line < document.lineCount; line++) {
                 const lineText = document.lineAt(line).text;
-                const closeQuoteIndex = lineText.indexOf(quote);
-                if (closeQuoteIndex !== -1) {
+                const closeIdx = lineText.indexOf(endDelimiter);
+                if (closeIdx !== -1) {
                     endLine = line;
-                    endCol = closeQuoteIndex + quote.length;
+                    endCol = closeIdx + endDelimiter.length;
                     foundEnd = true;
                     break;
                 }
@@ -162,7 +202,15 @@ export class PythonBlockDetector implements IBlockDetector {
 
         const range = new vscode.Range(startLine, startCol, endLine, endCol);
         const fullText = document.getText(range);
-        const content = fullText.substring(quote.length, fullText.length - quote.length).trim();
+
+        // Extract content
+        const content = fullText
+            .replace(/^\/\*\*?/, '')
+            .replace(/\*\/$/, '')
+            .split('\n')
+            .map(line => line.trim().replace(/^\*\s?/, ''))
+            .join('\n')
+            .trim();
 
         return { text: content, range };
     }
@@ -178,21 +226,21 @@ export class PythonBlockDetector implements IBlockDetector {
         const line = document.lineAt(lineNumber);
         const text = line.text;
 
-        // Find # that is not inside a string
-        const hashIndex = this.findCommentStart(text);
-        if (hashIndex === -1) {
+        // Find // that is not inside a string
+        const commentIndex = this.findCommentStart(text);
+        if (commentIndex === -1) {
             return null;
         }
 
         // Extract comment text
-        const commentText = text.substring(hashIndex + 1).trim();
+        const commentText = text.substring(commentIndex + 2).trim();
         if (commentText === '') {
             return null;
         }
 
         const range = new vscode.Range(
             lineNumber,
-            hashIndex,
+            commentIndex,
             lineNumber,
             text.length
         );
@@ -201,22 +249,23 @@ export class PythonBlockDetector implements IBlockDetector {
     }
 
     /**
-     * Find the start position of a comment (#) that is not inside a string
+     * Find the start position of a comment (//) that is not inside a string
      */
     private findCommentStart(line: string): number {
         let inSingleQuote = false;
         let inDoubleQuote = false;
         let prevChar = '';
 
-        for (let i = 0; i < line.length; i++) {
+        for (let i = 0; i < line.length - 1; i++) {
             const char = line[i];
+            const nextChar = line[i + 1];
 
             // Toggle quote states
             if (char === "'" && prevChar !== '\\' && !inDoubleQuote) {
                 inSingleQuote = !inSingleQuote;
             } else if (char === '"' && prevChar !== '\\' && !inSingleQuote) {
                 inDoubleQuote = !inDoubleQuote;
-            } else if (char === '#' && !inSingleQuote && !inDoubleQuote) {
+            } else if (char === '/' && nextChar === '/' && !inSingleQuote && !inDoubleQuote) {
                 return i;
             }
 
@@ -227,35 +276,36 @@ export class PythonBlockDetector implements IBlockDetector {
     }
 
     /**
-     * Extract module-level docstring (top-level docstring at the beginning of file)
+     * Extract module-level comment (file top-level)
      */
     public extractModuleDocstring(document: vscode.TextDocument): Omit<TextBlock, 'type'> | null {
-        // Look for docstring at the beginning of the file
-        // Skip initial comments and blank lines
+        // Look for comment at the beginning of the file
         for (let lineNum = 0; lineNum < Math.min(50, document.lineCount); lineNum++) {
             const line = document.lineAt(lineNum);
             const trimmedText = line.text.trim();
 
-            // Skip blank lines and comments
-            if (trimmedText === '' || trimmedText.startsWith('#')) {
+            // Skip blank lines and single-line comments
+            if (trimmedText === '' || trimmedText.startsWith('//')) {
                 continue;
             }
 
-            // Check if this line starts with triple quotes (module docstring)
-            if (trimmedText.startsWith('"""') || trimmedText.startsWith("'''")) {
-                const docstring = this.extractDocstringFromLine(document, lineNum);
-                if (docstring) {
-                    logger.debug(`Found module docstring at line ${lineNum}`);
-                    return docstring;
+            // Check if this line starts with JSDoc or multi-line comment
+            if (trimmedText.startsWith('/**') || trimmedText.startsWith('/*')) {
+                const comment = this.extractDocstringFromLine(document, lineNum);
+                if (comment) {
+                    logger.debug(`Found module comment at line ${lineNum}`);
+                    return comment;
                 }
             }
 
             // If we encounter import or other code, stop searching
             if (trimmedText.startsWith('import ') ||
-                trimmedText.startsWith('from ') ||
+                trimmedText.startsWith('export ') ||
                 trimmedText.startsWith('class ') ||
-                trimmedText.startsWith('def ') ||
-                trimmedText.startsWith('@')) {
+                trimmedText.startsWith('function ') ||
+                trimmedText.startsWith('const ') ||
+                trimmedText.startsWith('let ') ||
+                trimmedText.startsWith('var ')) {
                 break;
             }
         }
@@ -269,14 +319,14 @@ export class PythonBlockDetector implements IBlockDetector {
     async extractAllBlocks(document: vscode.TextDocument): Promise<TextBlock[]> {
         const blocks: TextBlock[] = [];
 
-        // 1. Extract module-level docstring (file top-level)
-        const moduleDocstring = this.extractModuleDocstring(document);
-        if (moduleDocstring && moduleDocstring.text.trim()) {
-            blocks.push({ ...moduleDocstring, type: 'docstring' });
-            logger.debug(`Extracted module docstring: ${moduleDocstring.text.substring(0, 30)}...`);
+        // 1. Extract module-level comment (file top-level)
+        const moduleComment = this.extractModuleDocstring(document);
+        if (moduleComment && moduleComment.text.trim()) {
+            blocks.push({ ...moduleComment, type: 'docstring' });
+            logger.debug(`Extracted module comment: ${moduleComment.text.substring(0, 30)}...`);
         }
 
-        // 2. Extract docstrings via LSP
+        // 2. Extract JSDoc comments via LSP
         try {
             const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
                 'vscode.executeDocumentSymbolProvider',
@@ -284,7 +334,7 @@ export class PythonBlockDetector implements IBlockDetector {
             );
 
             if (symbols && symbols.length > 0) {
-                await this.extractDocstringsFromSymbols(document, symbols, blocks);
+                await this.extractJSDocsFromSymbols(document, symbols, blocks);
             }
         } catch (error) {
             logger.error('Failed to get symbols from LSP', error);
@@ -301,27 +351,25 @@ export class PythonBlockDetector implements IBlockDetector {
     }
 
     /**
-     * Recursively extract docstrings from symbols
+     * Recursively extract JSDoc comments from symbols
      */
-    private async extractDocstringsFromSymbols(
+    private async extractJSDocsFromSymbols(
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[],
         blocks: TextBlock[]
     ): Promise<void> {
         for (const symbol of symbols) {
-            // Try to extract docstring for this symbol
-            const symbolBodyStart = symbol.selectionRange.end.line + 1;
-            if (symbolBodyStart < document.lineCount) {
-                const docstring = this.extractDocstringFromLine(document, symbolBodyStart);
-                if (docstring && docstring.text.trim()) {
-                    blocks.push({ ...docstring, type: 'docstring' });
-                    logger.debug(`Extracted docstring from ${symbol.name}: ${docstring.text.substring(0, 30)}...`);
-                }
+            // Try to extract JSDoc comment right before this symbol
+            const symbolStartLine = symbol.range.start.line;
+            const comment = this.extractJSDocBeforeLine(document, symbolStartLine);
+            if (comment && comment.text.trim()) {
+                blocks.push({ ...comment, type: 'docstring' });
+                logger.debug(`Extracted JSDoc from ${symbol.name}: ${comment.text.substring(0, 30)}...`);
             }
 
             // Recursively process children
             if (symbol.children && symbol.children.length > 0) {
-                await this.extractDocstringsFromSymbols(document, symbol.children, blocks);
+                await this.extractJSDocsFromSymbols(document, symbol.children, blocks);
             }
         }
     }

@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
-import { ClaudeClient } from './claudeClient';
+import { TranslationProviderFactory } from './translationProviderFactory';
 import { TranslationCache } from './translationCache';
 import { PreTranslationService } from './preTranslationService';
 import { InlineTranslationProvider } from './inlineTranslationProvider';
+import { BlockDetectorFactory } from './blockDetectorFactory';
 import { logger } from './logger';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -11,10 +12,9 @@ export function activate(context: vscode.ExtensionContext) {
 	logger.info(`VSCode version: ${vscode.version}`);
 	logger.info(`Extension path: ${context.extensionPath}`);
 
-	// Create Claude client and cache
-	const claudeClient = new ClaudeClient();
+	// Create cache
 	const cache = new TranslationCache(context);
-	logger.info('Claude client and cache created');
+	logger.info('Translation cache created');
 
 	// Create inline translation provider
 	const inlineProvider = new InlineTranslationProvider(cache);
@@ -22,7 +22,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Create pre-translation service
 	const preTranslationService = new PreTranslationService(
-		claudeClient,
 		cache,
 		inlineProvider
 	);
@@ -46,16 +45,20 @@ export function activate(context: vscode.ExtensionContext) {
 	// Watch for configuration changes
 	const configDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
 		if (event.affectsConfiguration('docTranslate')) {
-			logger.info('Configuration changed, updating Claude client');
-			claudeClient.updateConfiguration();
+			logger.info('Configuration changed, updating translation provider');
+			// Clear provider cache if provider type changed
+			if (event.affectsConfiguration('docTranslate.provider')) {
+				TranslationProviderFactory.clearCache();
+			}
+			TranslationProviderFactory.updateConfiguration();
 		}
 	});
 	logger.info('Configuration watcher registered');
 
-	// Pre-translate currently open Python files
-	logger.info('Pre-translating open Python files...');
+	// Pre-translate currently open supported files
+	logger.info('Pre-translating open supported files...');
 	vscode.workspace.textDocuments.forEach(doc => {
-		if (doc.languageId === 'python') {
+		if (BlockDetectorFactory.isLanguageSupported(doc.languageId)) {
 			logger.info(`Queuing pre-translation for open file: ${doc.fileName}`);
 			preTranslationService.preTranslateDocument(doc);
 		}
@@ -63,8 +66,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Watch for file open events
 	const onOpenDisposable = vscode.workspace.onDidOpenTextDocument((document) => {
-		if (document.languageId === 'python') {
-			logger.info(`Python file opened: ${document.fileName}`);
+		if (BlockDetectorFactory.isLanguageSupported(document.languageId)) {
+			logger.info(`Supported file opened: ${document.fileName} (${document.languageId})`);
 			preTranslationService.preTranslateDocument(document);
 		}
 	});
@@ -72,8 +75,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Watch for file changes (to invalidate pre-translation cache)
 	const onChangeDisposable = vscode.workspace.onDidChangeTextDocument((event) => {
-		if (event.document.languageId === 'python') {
-			logger.debug(`Python file changed: ${event.document.fileName}, clearing pre-translation cache`);
+		if (BlockDetectorFactory.isLanguageSupported(event.document.languageId)) {
+			logger.debug(`Supported file changed: ${event.document.fileName}, clearing pre-translation cache`);
 			preTranslationService.clearFileCache(event.document.uri);
 		}
 	});
@@ -81,8 +84,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Watch for file save events (to re-translate with cache)
 	const onSaveDisposable = vscode.workspace.onDidSaveTextDocument((document) => {
-		if (document.languageId === 'python') {
-			logger.info(`Python file saved: ${document.fileName}, re-translating`);
+		if (BlockDetectorFactory.isLanguageSupported(document.languageId)) {
+			logger.info(`Supported file saved: ${document.fileName} (${document.languageId}), re-translating`);
 			preTranslationService.preTranslateDocument(document);
 		}
 	});

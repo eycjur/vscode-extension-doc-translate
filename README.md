@@ -1,10 +1,13 @@
 # Doc Translate
 
-PythonコードのdocstringやコメントをClaude APIで日本語に翻訳するVSCode拡張機能です。
+コードのdocstringやコメントを複数のLLM（Claude, OpenAI, Gemini）で翻訳するVSCode拡張機能です。
 
 ## 機能
 
-- **インライン翻訳表示**: Pythonファイルを開くと、docstringとコメントの翻訳がコード内に常時表示
+- **複数のLLMプロバイダー対応**: Anthropic Claude、OpenAI、Google Geminiから選択可能
+- **複数のプログラミング言語対応**: Python、JavaScript、TypeScript、Goに対応
+- **翻訳言語の自由な設定**: 翻訳元と翻訳先の言語を自由に設定可能
+- **インライン翻訳表示**: ファイルを開くと、docstringとコメントの翻訳がコード内に常時表示
   - **コメント**（`#`）: 各行の右側に翻訳を表示（例: `# comment → コメント`）
   - **Docstring**（`"""`/`'''`）: 元のテキストを隠して翻訳を上書き表示
   - **カーソル・選択時は原文表示**: docstringにカーソルがあるか選択すると翻訳が自動的に非表示になり原文が見える
@@ -30,37 +33,66 @@ PythonコードのdocstringやコメントをClaude APIで日本語に翻訳す�
 
 ## 必要要件
 
-- **Anthropic APIキー**: この拡張機能を使用するにはAnthropicのAPIキーが必要です
-  - `ANTHROPIC_API_KEY` 環境変数を設定（推奨）、または
-  - VSCode設定で `docTranslate.anthropicApiKey` を設定
-- **Python拡張機能**: LSPベースのdocstring検出にはVSCodeのPython拡張機能（Pylance付き）が必要
+- **LLM APIキー**: 以下のいずれかのLLMプロバイダーのAPIキーが必要です
+  - **Anthropic Claude**: `ANTHROPIC_API_KEY` 環境変数、または `docTranslate.anthropicApiKey` 設定
+  - **OpenAI**: `OPENAI_API_KEY` 環境変数、または `docTranslate.openaiApiKey` 設定
+  - **Google Gemini**: `GEMINI_API_KEY` 環境変数、または `docTranslate.geminiApiKey` 設定
+- **言語拡張機能**: 各言語のLSPサポートが必要
+  - **Python**: Python拡張機能（Pylance付き）
+  - **JavaScript/TypeScript**: 通常、VSCodeに標準搭載
+  - **Go**: Go拡張機能
 
 ## 拡張機能の設定
 
 この拡張機能は以下の設定項目を提供します：
 
-* `docTranslate.anthropicApiKey`: Claude翻訳用のAnthropic APIキー（環境変数 `ANTHROPIC_API_KEY` が優先されます）
-* `docTranslate.model`: 翻訳に使用するClaudeモデル（デフォルト: `claude-haiku-4-5-20251001`）
+### 基本設定
+* `docTranslate.provider`: 使用するLLMプロバイダー（`anthropic`、`openai`、`gemini`、デフォルト: `anthropic`）
+* `docTranslate.sourceLang`: 翻訳元の言語コード（デフォルト: `en`）
+* `docTranslate.targetLang`: 翻訳先の言語コード（デフォルト: `ja`）
+* `docTranslate.supportedLanguages`: 翻訳対象のプログラミング言語（デフォルト: `["python", "javascript", "typescript", "go"]`）
 * `docTranslate.timeout`: APIリクエストのタイムアウト（ミリ秒、デフォルト: `30000`）
+
+### Anthropic Claude設定
+* `docTranslate.anthropicApiKey`: Anthropic APIキー（環境変数 `ANTHROPIC_API_KEY` が優先されます）
+* `docTranslate.model`: 使用するClaudeモデル（デフォルト: `claude-haiku-4-5-20251001`）
+
+### OpenAI設定
+* `docTranslate.openaiApiKey`: OpenAI APIキー（環境変数 `OPENAI_API_KEY` が優先されます）
+* `docTranslate.openaiModel`: 使用するOpenAIモデル（デフォルト: `gpt-4o-mini`）
+
+### Google Gemini設定
+* `docTranslate.geminiApiKey`: Gemini APIキー（環境変数 `GEMINI_API_KEY` が優先されます）
+* `docTranslate.geminiModel`: 使用するGeminiモデル（デフォルト: `gemini-2.0-flash-exp`）
 
 ## 使い方
 
-1. Anthropic APIキーを設定:
-   - **方法1（推奨）**: 環境変数 `ANTHROPIC_API_KEY` を設定
-   - **方法2**: VSCode設定で `docTranslate.anthropicApiKey` を設定
+1. LLMプロバイダーとAPIキーを設定:
+   - VSCode設定で `docTranslate.provider` を選択（`anthropic`、`openai`、`gemini`）
+   - 選択したプロバイダーのAPIキーを設定:
+     - **Anthropic**: 環境変数 `ANTHROPIC_API_KEY` または設定 `docTranslate.anthropicApiKey`
+     - **OpenAI**: 環境変数 `OPENAI_API_KEY` または設定 `docTranslate.openaiApiKey`
+     - **Gemini**: 環境変数 `GEMINI_API_KEY` または設定 `docTranslate.geminiApiKey`
 
-2. Pythonファイルを開く
+2. 翻訳言語を設定（オプション）:
+   - `docTranslate.sourceLang`: 翻訳元の言語（デフォルト: `en`）
+   - `docTranslate.targetLang`: 翻訳先の言語（デフォルト: `ja`）
+   - 対応言語: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`
+
+3. サポートされている言語のファイルを開く（Python、JavaScript、TypeScript、Go）
    - 拡張機能が自動的にバックグラウンドですべてのdocstringとコメントを翻訳開始
    - ステータスバーで進捗を確認: `$(sync~spin) Translating X/Y blocks...`
    - 完了時: `$(check) Translated X blocks`
 
-3. 翻訳を確認
-   - **コメント**: 各行の右側に翻訳が表示されます（例: `# This is a comment → これはコメントです`）
-   - **Docstring**: 元のテキストが隠され、翻訳が上書き表示されます
+4. 翻訳を確認
+   - **コメント**: 各行の右側に翻訳が表示されます
+     - Python: `# This is a comment → これはコメントです`
+     - JavaScript/TypeScript/Go: `// This is a comment → これはコメントです`
+   - **Docstring/JSDoc**: 元のテキストが隠され、翻訳が上書き表示されます
    - ホバー不要、常に見える状態
    - 元のコードは一切変更されません（見た目のみ）
 
-4. ファイルを編集・保存
+5. ファイルを編集・保存
    - ファイルを保存すると自動的に再翻訳されます
    - キャッシュを活用するので、変更されていない部分は高速に処理
 
@@ -93,6 +125,15 @@ PythonコードのdocstringやコメントをClaude APIで日本語に翻訳す�
 現時点ではありません。
 
 ## リリースノート
+
+### 0.4.0
+
+メジャーアップデート - マルチLLM & マルチ言語対応:
+- **複数のLLMプロバイダー対応**: Anthropic Claude、OpenAI、Google Geminiから選択可能
+- **複数のプログラミング言語対応**: Python、JavaScript、TypeScript、Goに対応
+- **翻訳言語の自由な設定**: 翻訳元と翻訳先の言語を自由に設定可能
+- プロバイダーごとのモデル設定
+- 言語ごとの最適化されたブロック検出
 
 ### 0.3.0
 
