@@ -19,11 +19,11 @@
     "commands": [
       {
         "command": "doc-translate.clearCache",
-        "title": "Doc Translate: 翻訳キャッシュをクリア"
+        "title": "Doc Translate: Clear Translation Cache"
       },
       {
         "command": "doc-translate.showLogs",
-        "title": "Doc Translate: ログを表示"
+        "title": "Doc Translate: Show Logs"
       }
     ],
     "configuration": {
