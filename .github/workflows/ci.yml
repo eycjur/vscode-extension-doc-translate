@@ -33,7 +33,7 @@ jobs:
       run: npm run compile
 
     - name: Run tests
-      run: npm test
+      run: xvfb-run -a npm run test
       env:
         # Mock API keys for testing (not real keys)
         ANTHROPIC_API_KEY: test-key-anthropic
