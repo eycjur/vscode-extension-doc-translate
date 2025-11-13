@@ -6,7 +6,7 @@
   "publisher": "m-cube",
   "icon": "img/icon-design.png",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.99.0"
   },
   "categories": [
     "Other"
