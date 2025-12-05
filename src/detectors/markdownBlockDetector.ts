@@ -70,18 +70,22 @@ export class MarkdownBlockDetector extends BaseBlockDetector {
       }
 
       // Detect Blockquotes (> Quote)
-      if (trimmedLine.startsWith('>')) {
-        // Pass the whole line to preserve indentation
-        this.addBlock(blocks, line, i, 'docstring');
+      // Regex: (indentation)(>)(optional space)(content)
+      const quoteMatch = line.match(/^(\s*>\s?)(.*)$/);
+      if (quoteMatch) {
+        const prefix = quoteMatch[1];
+        const content = quoteMatch[2];
+        this.addBlockWithOffset(blocks, content, i, prefix.length, 'docstring');
         continue;
       }
 
       // Detect List Items (- Item, * Item, 1. Item)
-      // Note: We want to preserve the bullet point so the translation maintains the list structure
-      const listMatch = trimmedLine.match(/^(\s*[-*+]|\s*\d+\.)\s+(.+)/);
+      // Regex: (indentation)(marker)(space)(content)
+      const listMatch = line.match(/^(\s*(?:[-*+]|\d+\.)\s+)(.*)$/);
       if (listMatch) {
-        // Pass the whole line to preserve indentation and marker
-        this.addBlock(blocks, line, i, 'docstring');
+        const prefix = listMatch[1];
+        const content = listMatch[2];
+        this.addBlockWithOffset(blocks, content, i, prefix.length, 'docstring');
         continue;
       }
 
@@ -123,6 +127,28 @@ export class MarkdownBlockDetector extends BaseBlockDetector {
           leadingSpaces,
           lineIndex,
           text.length
+        ),
+        type: type
+      });
+    }
+  }
+
+  private addBlockWithOffset(
+    blocks: TextBlock[],
+    text: string,
+    lineIndex: number,
+    startOffset: number,
+    type: 'docstring' | 'comment'
+  ): void {
+    const cleanText = text.trimEnd();
+    if (cleanText.length > 0) {
+      blocks.push({
+        text: cleanText,
+        range: new vscode.Range(
+          lineIndex,
+          startOffset,
+          lineIndex,
+          startOffset + cleanText.length
         ),
         type: type
       });
