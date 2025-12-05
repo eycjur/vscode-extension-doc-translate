@@ -7,7 +7,6 @@ import { InlineTranslationProvider } from './inlineTranslationProvider';
 import { logger } from '../utils/logger';
 import { ConfigManager } from '../utils/config';
 import { TextBlock } from '../detectors/base/blockDetector';
-const pLimit = require('p-limit');
 
 interface ITranslationProvider {
   translate(text: string, targetLang: string): Promise<string>;
