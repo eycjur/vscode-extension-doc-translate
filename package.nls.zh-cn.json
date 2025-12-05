@@ -1,0 +1,17 @@
+{
+  "description": "使用多种 LLM（Claude, OpenAI, Gemini）翻译代码文档字符串和注释（支持 Python, JS, TS, Go）",
+  "config.provider": "使用的 LLM 提供商",
+  "config.targetLang": "目标语言代码（例如：en, ja, zh, ko, fr, de, es, it, pt, ru）",
+  "config.supportedLanguages": "支持翻译的编程语言",
+  "config.anthropicApiKey": "Anthropic API 密钥（优先使用 ANTHROPIC_API_KEY 环境变量）",
+  "config.model": "用于翻译的 Anthropic 模型",
+  "config.openaiApiKey": "OpenAI API 密钥（优先使用 OPENAI_API_KEY 环境变量）",
+  "config.openaiModel": "用于翻译的 OpenAI 模型",
+  "config.geminiApiKey": "Gemini API 密钥（优先使用 GEMINI_API_KEY 环境变量）",
+  "config.geminiModel": "用于翻译的 Gemini 模型",
+  "config.timeout": "API 请求超时时间（毫秒）",
+  "config.maxRetries": "速率限制时的最大重试次数",
+  "config.retryInitialDelay": "重试初始延迟（毫秒）",
+  "command.clearCache": "Doc Translate: 清除翻译缓存",
+  "command.showLogs": "Doc Translate: 显示日志"
+}
