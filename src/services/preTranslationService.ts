@@ -7,6 +7,12 @@ import { InlineTranslationProvider } from './inlineTranslationProvider';
 import { logger } from '../utils/logger';
 import { ConfigManager } from '../utils/config';
 import { TextBlock } from '../detectors/base/blockDetector';
+const pLimit = require('p-limit');
+
+interface ITranslationProvider {
+  translate(text: string, targetLang: string): Promise<string>;
+  translateBatch(texts: string[], targetLang: string): Promise<string[]>;
+}
 
 // Maximum number of concurrent translation requests
 const MAX_CONCURRENT_REQUESTS = 5;
@@ -97,7 +103,7 @@ export class PreTranslationService {
 
       // Filter out already cached blocks
       const blocksToTranslate = blocks.filter(
-        (block) => !this.cache.get(block.text)
+        (block) => !this.cache.get(block.text, ConfigManager.getTargetLang())
       );
       const cachedCount = blocks.length - blocksToTranslate.length;
 
@@ -209,42 +215,102 @@ export class PreTranslationService {
 
     // Process blocks in batches
     while (index < blocksToTranslate.length) {
-      // Get next batch (up to MAX_CONCURRENT_REQUESTS)
-      const batch = blocksToTranslate.slice(
-        index,
-        index + MAX_CONCURRENT_REQUESTS
+      // Get next batch (up to MAX_CONCURRENT_REQUESTS * BATCH_SIZE)
+      // We want to process multiple batches concurrently
+
+      const BATCH_SIZE = 10;
+      const MAX_BATCH_LENGTH = 2000;
+
+      // Prepare batches for this concurrent run
+      const currentRunBatches: TextBlock[][] = [];
+
+      // Fill up to MAX_CONCURRENT_REQUESTS batches
+      while (
+        currentRunBatches.length < MAX_CONCURRENT_REQUESTS &&
+        index < blocksToTranslate.length
+      ) {
+        const batch: TextBlock[] = [];
+        let currentBatchLength = 0;
+
+        // Fill one batch
+        while (index < blocksToTranslate.length) {
+          const block = blocksToTranslate[index];
+
+          // Check limits for current batch
+          if (
+            batch.length > 0 &&
+            (batch.length >= BATCH_SIZE ||
+              currentBatchLength + block.text.length > MAX_BATCH_LENGTH)
+          ) {
+            break; // Batch full
+          }
+
+          batch.push(block);
+          currentBatchLength += block.text.length;
+          index++;
+        }
+
+        if (batch.length > 0) {
+          currentRunBatches.push(batch);
+        }
+      }
+
+      logger.info(
+        `Processing ${currentRunBatches.length} batches concurrently`
       );
-      index += batch.length;
 
-      // Translate all blocks in this batch concurrently
-      const promises = batch.map(async (block) => {
+      // Process these batches concurrently
+      const promises = currentRunBatches.map(async (batch) => {
         try {
-          logger.debug(
-            `Translating block text (${
-              block.text.length
-            } chars): "${block.text.substring(0, 100)}..."`
-          );
-          const translation = await provider.translate(block.text, targetLang);
-          this.cache.set(block.text, translation);
-          completed++;
-          onProgress(completed, allBlocks.length);
-          logger.debug(`Completed ${completed}/${blocksToTranslate.length}`);
+          const textsToTranslate = batch.map((b) => b.text);
+          // Cast provider to ITranslationProvider to access translateBatch
+          const batchProvider = provider as unknown as ITranslationProvider;
 
-          // Update inline translations progressively after each block completes
+          let translations: string[] = [];
+          if (typeof batchProvider.translateBatch === 'function') {
+            translations = await batchProvider.translateBatch(
+              textsToTranslate,
+              targetLang
+            );
+          } else {
+            // Fallback if provider doesn't support batching (shouldn't happen with our changes)
+            translations = await Promise.all(
+              textsToTranslate.map((t) => provider.translate(t, targetLang))
+            );
+          }
+
+          // Store translations in cache and update progress
+          for (let i = 0; i < batch.length; i++) {
+            const block = batch[i];
+            const translation = translations[i];
+            if (translation) {
+              this.cache.set(block.text, translation, targetLang);
+              completed++;
+              onProgress(completed, allBlocks.length);
+            } else {
+              failedBlocks.push(block);
+              logger.error(
+                `Failed to translate block in batch: ${block.text.substring(
+                  0,
+                  30
+                )}...`
+              );
+            }
+          }
+          // Update inline translations progressively after each batch completes
           await this.inlineProvider.updateInlineTranslations(
             document,
             allBlocks
           );
         } catch (error) {
-          failedBlocks.push(block);
-          logger.error(
-            `Failed to translate block: ${block.text.substring(0, 30)}...`,
-            error
-          );
+          // If batch fails completely, mark all blocks in it as failed
+          for (const block of batch) {
+            failedBlocks.push(block);
+          }
+          logger.error('Batch translation failed', error);
         }
       });
 
-      // Wait for all translations in this batch to complete
       await Promise.all(promises);
     }
 
