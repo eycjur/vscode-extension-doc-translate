@@ -103,13 +103,24 @@ export function activate(context: vscode.ExtensionContext) {
   logger.info('File change watcher registered');
 
   // Watch for file save events (to re-translate with cache)
+  // Use debounce to prevent excessive API calls when auto-save is enabled
+  let saveTimeout: NodeJS.Timeout | undefined;
   const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(
     (document) => {
       if (BlockDetectorFactory.isLanguageSupported(document.languageId)) {
-        logger.info(
-          `Supported file saved: ${document.fileName} (${document.languageId}), re-translating`
-        );
-        preTranslationService.preTranslateDocument(document);
+        // Clear previous timeout if exists
+        if (saveTimeout) {
+          clearTimeout(saveTimeout);
+        }
+
+        // Set new timeout (debounce)
+        saveTimeout = setTimeout(() => {
+          logger.info(
+            `Supported file saved: ${document.fileName} (${document.languageId}), re-translating`
+          );
+          preTranslationService.preTranslateDocument(document);
+          saveTimeout = undefined;
+        }, 1500); // 1.5 seconds delay
       }
     }
   );
