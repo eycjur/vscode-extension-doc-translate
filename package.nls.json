@@ -1,0 +1,18 @@
+{
+  "description": "Translate code docstrings and comments using multiple LLMs (Claude, OpenAI, Gemini). Supports Python, JS, TS, Go.",
+  "config.provider": "LLM provider to use",
+  "config.targetLang": "Target language code (e.g., en, ja, zh, ko, fr, de, es, it, pt, ru)",
+  "config.supportedLanguages": "Programming languages to translate",
+  "config.anthropicApiKey": "Anthropic API Key (ANTHROPIC_API_KEY environment variable takes precedence)",
+  "config.model": "Anthropic model to use for translation",
+  "config.openaiApiKey": "OpenAI API Key (OPENAI_API_KEY environment variable takes precedence)",
+  "config.openaiModel": "OpenAI model to use for translation",
+  "config.openaiBaseUrl": "OpenAI Base URL (optional)",
+  "config.geminiApiKey": "Gemini API Key (GEMINI_API_KEY environment variable takes precedence)",
+  "config.geminiModel": "Gemini model to use for translation",
+  "config.timeout": "API request timeout (milliseconds)",
+  "config.maxRetries": "Maximum number of retries on rate limit",
+  "config.retryInitialDelay": "Initial retry delay (milliseconds)",
+  "command.clearCache": "Doc Translate: Clear Translation Cache",
+  "command.showLogs": "Doc Translate: Show Logs"
+}

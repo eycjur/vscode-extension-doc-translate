@@ -8,307 +8,450 @@ import { logger } from '../utils/logger';
 import { ConfigManager } from '../utils/config';
 import { TextBlock } from '../detectors/base/blockDetector';
 
+interface ITranslationProvider {
+  translate(text: string, targetLang: string): Promise<string>;
+  translateBatch(texts: string[], targetLang: string): Promise<string[]>;
+}
+
 // Maximum number of concurrent translation requests
 const MAX_CONCURRENT_REQUESTS = 5;
 
 export class PreTranslationService {
-    private cache: TranslationCache;
-    private inlineProvider: InlineTranslationProvider;
-    private statusBarItem: vscode.StatusBarItem;
-    private activeTranslations = new Map<string, Promise<void>>();
+  private cache: TranslationCache;
+  private inlineProvider: InlineTranslationProvider;
+  private statusBarItem: vscode.StatusBarItem;
+  private activeTranslations = new Map<string, Promise<void>>();
 
-    constructor(cache: TranslationCache, inlineProvider: InlineTranslationProvider) {
-        this.cache = cache;
-        this.inlineProvider = inlineProvider;
-        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
-        this.statusBarItem.command = 'doc-translate.showLogs';
+  constructor(
+    cache: TranslationCache,
+    inlineProvider: InlineTranslationProvider
+  ) {
+    this.cache = cache;
+    this.inlineProvider = inlineProvider;
+    this.statusBarItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      90
+    );
+    this.statusBarItem.command = 'doc-translate.showLogs';
+  }
+
+  /**
+   * Pre-translate all docstrings and comments in a document
+   * Always runs - uses cache when available, translates when not
+   */
+  async preTranslateDocument(document: vscode.TextDocument): Promise<void> {
+    // Only process supported languages
+    if (!BlockDetectorFactory.isLanguageSupported(document.languageId)) {
+      return;
     }
 
-    /**
-     * Pre-translate all docstrings and comments in a document
-     * Always runs - uses cache when available, translates when not
-     */
-    async preTranslateDocument(document: vscode.TextDocument): Promise<void> {
-        // Only process supported languages
-        if (!BlockDetectorFactory.isLanguageSupported(document.languageId)) {
-            return;
-        }
+    const fileKey = document.uri.toString();
 
-        const fileKey = document.uri.toString();
-
-        // If already translating this file, wait for it
-        const existingTranslation = this.activeTranslations.get(fileKey);
-        if (existingTranslation) {
-            logger.debug(`Translation already in progress for: ${document.fileName}, waiting...`);
-            await existingTranslation;
-            return;
-        }
-
-        // Create translation promise
-        const translationPromise = this.performTranslation(document);
-        this.activeTranslations.set(fileKey, translationPromise);
-
-        try {
-            await translationPromise;
-        } finally {
-            this.activeTranslations.delete(fileKey);
-        }
+    // If already translating this file, wait for it
+    const existingTranslation = this.activeTranslations.get(fileKey);
+    if (existingTranslation) {
+      logger.debug(
+        `Translation already in progress for: ${document.fileName}, waiting...`
+      );
+      await existingTranslation;
+      return;
     }
 
-    /**
-     * Perform translation for a document
-     */
-    private async performTranslation(document: vscode.TextDocument): Promise<void> {
-        logger.info('='.repeat(60));
-        logger.info(`Translating: ${document.fileName}`);
-        logger.info('='.repeat(60));
+    // Create translation promise
+    const translationPromise = this.performTranslation(document);
+    this.activeTranslations.set(fileKey, translationPromise);
 
-        try {
-            // Extract all translatable blocks
-            const blocks = await this.extractAllBlocks(document);
-            logger.info(`Found ${blocks.length} translatable blocks`);
-
-            if (blocks.length === 0) {
-                logger.info('No translatable blocks found');
-                this.statusBarItem.hide();
-                return;
-            }
-
-            // Show progress in status bar
-            this.statusBarItem.text = `$(sync~spin) Translating ${blocks.length} blocks...`;
-            this.statusBarItem.show();
-
-            let translated = 0;
-            const startTime = Date.now();
-            let translationSucceeded = false;
-
-            // Filter out already cached blocks
-            const blocksToTranslate = blocks.filter(block => !this.cache.get(block.text));
-            const cachedCount = blocks.length - blocksToTranslate.length;
-
-            if (cachedCount > 0) {
-                logger.info(`${cachedCount} blocks already cached, skipping`);
-                translated = cachedCount;
-            }
-
-            if (blocksToTranslate.length === 0) {
-                logger.info('All blocks already cached, no translation needed');
-                await this.inlineProvider.updateInlineTranslations(document, blocks);
-                translationSucceeded = true;
-                translated = blocks.length;
-            } else {
-                logger.info(`Translating ${blocksToTranslate.length} blocks with max ${MAX_CONCURRENT_REQUESTS} concurrent requests`);
-
-                // Display cached translations first
-                if (cachedCount > 0) {
-                    await this.inlineProvider.updateInlineTranslations(document, blocks);
-                }
-
-                // Translate blocks in parallel with concurrency limit
-                const failedBlocks = await this.translateBlocksConcurrently(
-                    document,
-                    blocksToTranslate,
-                    blocks,
-                    (current, total) => {
-                        translated = cachedCount + current;
-                        this.statusBarItem.text = `$(sync~spin) Translating ${translated}/${total}...`;
-                    }
-                );
-
-                if (failedBlocks.length === 0) {
-                    translationSucceeded = true;
-                    translated = blocks.length;
-                } else {
-                    translationSucceeded = await this.handlePartialFailures(document, blocks, failedBlocks);
-                    if (translationSucceeded) {
-                        translated = blocks.length;
-                    }
-                }
-            }
-
-            const duration = Date.now() - startTime;
-            if (translationSucceeded) {
-                logger.info(`Translation completed: ${translated}/${blocks.length} blocks in ${duration}ms`);
-                this.statusBarItem.text = `$(check) Translated ${translated} blocks`;
-                this.statusBarItem.tooltip = `Completed: ${path.basename(document.fileName)}`;
-            } else {
-                logger.warn(`Translation finished with failures: ${translated}/${blocks.length} blocks in ${duration}ms`);
-                this.statusBarItem.text = `$(warning) Translation incomplete`;
-                this.statusBarItem.tooltip = `Some blocks failed in ${path.basename(document.fileName)}`;
-            }
-            logger.info('='.repeat(60));
-            setTimeout(() => this.statusBarItem.hide(), 5000);
-
-        } catch (error) {
-            await this.handleFileTranslationError(document, error);
-            this.statusBarItem.text = `$(error) Translation failed`;
-            this.statusBarItem.tooltip = `Failed: ${path.basename(document.fileName)}`;
-            setTimeout(() => this.statusBarItem.hide(), 5000);
-        }
+    try {
+      await translationPromise;
+    } finally {
+      this.activeTranslations.delete(fileKey);
     }
+  }
 
-    /**
-     * Translate blocks concurrently with a limit on concurrent requests
-     * Updates inline translations progressively as each block completes
-     */
-    private async translateBlocksConcurrently(
-        document: vscode.TextDocument,
-        blocksToTranslate: TextBlock[],
-        allBlocks: TextBlock[],
-        onProgress: (current: number, total: number) => void
-    ): Promise<TextBlock[]> {
-        let completed = 0;
-        let index = 0;
-        const failedBlocks: TextBlock[] = [];
+  /**
+   * Perform translation for a document
+   */
+  private async performTranslation(
+    document: vscode.TextDocument
+  ): Promise<void> {
+    logger.info('='.repeat(60));
+    logger.info(`Translating: ${document.fileName}`);
+    logger.info('='.repeat(60));
 
-        // Get translation provider and language settings
-        const provider = TranslationProviderFactory.getProvider();
-        const targetLang = ConfigManager.getTargetLang();
+    try {
+      // Extract all translatable blocks
+      const blocks = await this.extractAllBlocks(document);
+      logger.info(`Found ${blocks.length} translatable blocks`);
 
-        // Process blocks in batches
-        while (index < blocksToTranslate.length) {
-            // Get next batch (up to MAX_CONCURRENT_REQUESTS)
-            const batch = blocksToTranslate.slice(index, index + MAX_CONCURRENT_REQUESTS);
-            index += batch.length;
+      if (blocks.length === 0) {
+        logger.info('No translatable blocks found');
+        this.statusBarItem.hide();
+        return;
+      }
 
-            // Translate all blocks in this batch concurrently
-            const promises = batch.map(async (block) => {
-                try {
-                    logger.debug(`Translating block text (${block.text.length} chars): "${block.text.substring(0, 100)}..."`);
-                    const translation = await provider.translate(block.text, targetLang);
-                    this.cache.set(block.text, translation);
-                    completed++;
-                    onProgress(completed, allBlocks.length);
-                    logger.debug(`Completed ${completed}/${blocksToTranslate.length}`);
+      // Show progress in status bar
+      this.statusBarItem.text = `$(sync~spin) ${vscode.l10n.t(
+        'status.translating',
+        blocks.length
+      )}`;
+      this.statusBarItem.show();
 
-                    // Update inline translations progressively after each block completes
-                    await this.inlineProvider.updateInlineTranslations(document, allBlocks);
-                } catch (error) {
-                    failedBlocks.push(block);
-                    logger.error(`Failed to translate block: ${block.text.substring(0, 30)}...`, error);
-                }
-            });
+      let translated = 0;
+      const startTime = Date.now();
+      let translationSucceeded = false;
 
-            // Wait for all translations in this batch to complete
-            await Promise.all(promises);
+      // Filter out already cached blocks
+      const blocksToTranslate = blocks.filter(
+        (block) => !this.cache.get(block.text, ConfigManager.getTargetLang())
+      );
+      const cachedCount = blocks.length - blocksToTranslate.length;
+
+      if (cachedCount > 0) {
+        logger.info(`${cachedCount} blocks already cached, skipping`);
+        translated = cachedCount;
+      }
+
+      if (blocksToTranslate.length === 0) {
+        logger.info('All blocks already cached, no translation needed');
+        await this.inlineProvider.updateInlineTranslations(document, blocks);
+        translationSucceeded = true;
+        translated = blocks.length;
+      } else {
+        logger.info(
+          `Translating ${blocksToTranslate.length} blocks with max ${MAX_CONCURRENT_REQUESTS} concurrent requests`
+        );
+
+        // Display cached translations first
+        if (cachedCount > 0) {
+          await this.inlineProvider.updateInlineTranslations(document, blocks);
         }
 
-        logger.info(`Concurrent translation completed: ${completed}/${blocksToTranslate.length} blocks translated`);
-        return failedBlocks;
-    }
+        // Translate blocks in parallel with concurrency limit
+        const failedBlocks = await this.translateBlocksConcurrently(
+          document,
+          blocksToTranslate,
+          blocks,
+          (current, total) => {
+            translated = cachedCount + current;
+            this.statusBarItem.text = `$(sync~spin) ${vscode.l10n.t(
+              'status.translatingProgress',
+              translated,
+              total
+            )}`;
+          }
+        );
 
-    /**
-     * Extract all translatable blocks from document
-     */
-    private async extractAllBlocks(document: vscode.TextDocument): Promise<TextBlock[]> {
-        // Get the appropriate detector for this language
-        const detector = BlockDetectorFactory.getDetector(document.languageId);
-        if (!detector) {
-            logger.warn(`No detector available for language: ${document.languageId}`);
-            return [];
-        }
-
-        // Use the detector to extract all blocks
-        return await detector.extractAllBlocks(document);
-    }
-
-    private async handlePartialFailures(
-        document: vscode.TextDocument,
-        allBlocks: TextBlock[],
-        failedBlocks: TextBlock[]
-    ): Promise<boolean> {
         if (failedBlocks.length === 0) {
-            return true;
-        }
-
-        const fileName = path.basename(document.fileName);
-        const message = `${fileName}: ${failedBlocks.length} blocks failed to translate`;
-        logger.notifyWarning(message);
-
-        const retryLabel = 'Retry Failed Blocks';
-        const selection = await vscode.window.showWarningMessage(
-            `Doc Translate: ${message}`,
-            retryLabel,
-            'View Logs'
-        );
-
-        if (selection === 'View Logs') {
-            logger.show();
-            return false;
-        }
-
-        if (selection !== retryLabel) {
-            return false;
-        }
-
-        this.statusBarItem.text = `$(sync~spin) Retrying ${failedBlocks.length} blocks...`;
-        this.statusBarItem.tooltip = `${fileName} – retrying failed translations`;
-        this.statusBarItem.show();
-
-        const remainingFailures = await this.translateBlocksConcurrently(
+          translationSucceeded = true;
+          translated = blocks.length;
+        } else {
+          translationSucceeded = await this.handlePartialFailures(
             document,
-            failedBlocks,
-            allBlocks,
-            (current, _total) => {
-                this.statusBarItem.text = `$(sync~spin) Retrying ${current}/${failedBlocks.length} blocks...`;
+            blocks,
+            failedBlocks
+          );
+          if (translationSucceeded) {
+            translated = blocks.length;
+          }
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      if (translationSucceeded) {
+        logger.info(
+          `Translation completed: ${translated}/${blocks.length} blocks in ${duration}ms`
+        );
+        this.statusBarItem.text = `$(check) ${vscode.l10n.t(
+          'status.translated',
+          translated
+        )}`;
+        this.statusBarItem.tooltip = vscode.l10n.t(
+          'status.tooltip.completed',
+          path.basename(document.fileName)
+        );
+      } else {
+        logger.warn(
+          `Translation finished with failures: ${translated}/${blocks.length} blocks in ${duration}ms`
+        );
+        this.statusBarItem.text = `$(warning) ${vscode.l10n.t(
+          'status.incomplete'
+        )}`;
+        this.statusBarItem.tooltip = vscode.l10n.t(
+          'status.tooltip.incomplete',
+          path.basename(document.fileName)
+        );
+      }
+      logger.info('='.repeat(60));
+      setTimeout(() => this.statusBarItem.hide(), 5000);
+    } catch (error) {
+      await this.handleFileTranslationError(document, error);
+      this.statusBarItem.text = `$(error) ${vscode.l10n.t('status.failed')}`;
+      this.statusBarItem.tooltip = vscode.l10n.t(
+        'status.tooltip.failed',
+        path.basename(document.fileName)
+      );
+      setTimeout(() => this.statusBarItem.hide(), 5000);
+    }
+  }
+
+  /**
+   * Translate blocks concurrently with a limit on concurrent requests
+   * Updates inline translations progressively as each block completes
+   */
+  private async translateBlocksConcurrently(
+    document: vscode.TextDocument,
+    blocksToTranslate: TextBlock[],
+    allBlocks: TextBlock[],
+    onProgress: (current: number, total: number) => void
+  ): Promise<TextBlock[]> {
+    let completed = 0;
+    let index = 0;
+    const failedBlocks: TextBlock[] = [];
+
+    // Get translation provider and language settings
+    const provider = TranslationProviderFactory.getProvider();
+    const targetLang = ConfigManager.getTargetLang();
+
+    // Process blocks in batches
+    while (index < blocksToTranslate.length) {
+      // Get next batch (up to MAX_CONCURRENT_REQUESTS * BATCH_SIZE)
+      // We want to process multiple batches concurrently
+
+      const BATCH_SIZE = 10;
+      const MAX_BATCH_LENGTH = 2000;
+
+      // Prepare batches for this concurrent run
+      const currentRunBatches: TextBlock[][] = [];
+
+      // Fill up to MAX_CONCURRENT_REQUESTS batches
+      while (
+        currentRunBatches.length < MAX_CONCURRENT_REQUESTS &&
+        index < blocksToTranslate.length
+      ) {
+        const batch: TextBlock[] = [];
+        let currentBatchLength = 0;
+
+        // Fill one batch
+        while (index < blocksToTranslate.length) {
+          const block = blocksToTranslate[index];
+
+          // Check limits for current batch
+          if (
+            batch.length > 0 &&
+            (batch.length >= BATCH_SIZE ||
+              currentBatchLength + block.text.length > MAX_BATCH_LENGTH)
+          ) {
+            break; // Batch full
+          }
+
+          batch.push(block);
+          currentBatchLength += block.text.length;
+          index++;
+        }
+
+        if (batch.length > 0) {
+          currentRunBatches.push(batch);
+        }
+      }
+
+      logger.info(
+        `Processing ${currentRunBatches.length} batches concurrently`
+      );
+
+      // Process these batches concurrently
+      const promises = currentRunBatches.map(async (batch) => {
+        try {
+          const textsToTranslate = batch.map((b) => b.text);
+          // Cast provider to ITranslationProvider to access translateBatch
+          const batchProvider = provider as unknown as ITranslationProvider;
+
+          let translations: string[] = [];
+          if (typeof batchProvider.translateBatch === 'function') {
+            translations = await batchProvider.translateBatch(
+              textsToTranslate,
+              targetLang
+            );
+          } else {
+            // Fallback if provider doesn't support batching (shouldn't happen with our changes)
+            translations = await Promise.all(
+              textsToTranslate.map((t) => provider.translate(t, targetLang))
+            );
+          }
+
+          // Store translations in cache and update progress
+          for (let i = 0; i < batch.length; i++) {
+            const block = batch[i];
+            const translation = translations[i];
+            if (translation) {
+              this.cache.set(block.text, translation, targetLang);
+              completed++;
+              onProgress(completed, allBlocks.length);
+            } else {
+              failedBlocks.push(block);
+              logger.error(
+                `Failed to translate block in batch: ${block.text.substring(
+                  0,
+                  30
+                )}...`
+              );
             }
-        );
-
-        if (remainingFailures.length === 0) {
-            return true;
+          }
+          // Update inline translations progressively after each batch completes
+          await this.inlineProvider.updateInlineTranslations(
+            document,
+            allBlocks
+          );
+        } catch (error) {
+          // If batch fails completely, mark all blocks in it as failed
+          for (const block of batch) {
+            failedBlocks.push(block);
+          }
+          logger.error('Batch translation failed', error);
         }
+      });
 
-        logger.notifyError(`${fileName}: ${remainingFailures.length} blocks still failing after retry`);
-        return false;
+      await Promise.all(promises);
     }
 
-    private async handleFileTranslationError(document: vscode.TextDocument, error: any): Promise<void> {
-        const fileName = path.basename(document.fileName);
-        const reason = error?.message || error?.toString() || 'Unknown error';
-        const message = `${fileName} の翻訳に失敗しました (${reason})`;
-        logger.notifyError(message, error);
+    logger.info(
+      `Concurrent translation completed: ${completed}/${blocksToTranslate.length} blocks translated`
+    );
+    return failedBlocks;
+  }
 
-        const retryLabel = 'Retry File';
-        const selection = await vscode.window.showErrorMessage(
-            `Doc Translate: ${message}`,
-            retryLabel,
-            'View Logs'
-        );
-
-        if (selection === 'View Logs') {
-            logger.show();
-            return;
-        }
-
-        if (selection === retryLabel) {
-            this.scheduleRetry(document);
-        }
+  /**
+   * Extract all translatable blocks from document
+   */
+  private async extractAllBlocks(
+    document: vscode.TextDocument
+  ): Promise<TextBlock[]> {
+    // Get the appropriate detector for this language
+    const detector = BlockDetectorFactory.getDetector(document.languageId);
+    if (!detector) {
+      logger.warn(`No detector available for language: ${document.languageId}`);
+      return [];
     }
 
-    private scheduleRetry(document: vscode.TextDocument): void {
-        setTimeout(() => this.preTranslateDocument(document), 100);
+    // Use the detector to extract all blocks
+    return await detector.extractAllBlocks(document);
+  }
+
+  private async handlePartialFailures(
+    document: vscode.TextDocument,
+    allBlocks: TextBlock[],
+    failedBlocks: TextBlock[]
+  ): Promise<boolean> {
+    if (failedBlocks.length === 0) {
+      return true;
     }
 
-    /**
-     * Clear decorations for a file (called when explicitly clearing cache)
-     */
-    clearFileCache(uri: vscode.Uri): void {
-        this.inlineProvider.clearFileDecorations(uri);
-        logger.info(`Cleared decorations for: ${uri.fsPath}`);
+    const fileName = path.basename(document.fileName);
+    const message = vscode.l10n.t(
+      'message.failedBlocks',
+      fileName,
+      failedBlocks.length
+    );
+    logger.notifyWarning(message);
+
+    const retryLabel = vscode.l10n.t('action.retryFailedBlocks');
+    const selection = await vscode.window.showWarningMessage(
+      `Doc Translate: ${message}`,
+      retryLabel,
+      vscode.l10n.t('action.viewLogs')
+    );
+
+    if (selection === vscode.l10n.t('action.viewLogs')) {
+      logger.show();
+      return false;
     }
 
-    /**
-     * Clear all decorations
-     */
-    clearAllCaches(): void {
-        this.inlineProvider.clearAllDecorations();
-        logger.info('Cleared all decorations');
+    if (selection !== retryLabel) {
+      return false;
     }
 
-    /**
-     * Dispose resources
-     */
-    dispose(): void {
-        this.statusBarItem.dispose();
+    this.statusBarItem.text = `$(sync~spin) ${vscode.l10n.t(
+      'status.retrying',
+      failedBlocks.length
+    )}`;
+    this.statusBarItem.tooltip = vscode.l10n.t(
+      'status.tooltip.retrying',
+      fileName
+    );
+    this.statusBarItem.show();
+
+    const remainingFailures = await this.translateBlocksConcurrently(
+      document,
+      failedBlocks,
+      allBlocks,
+      (current, _total) => {
+        this.statusBarItem.text = `$(sync~spin) ${vscode.l10n.t(
+          'status.retryingProgress',
+          current,
+          failedBlocks.length
+        )}`;
+      }
+    );
+
+    if (remainingFailures.length === 0) {
+      return true;
     }
+
+    logger.notifyError(
+      vscode.l10n.t('message.failedRetry', fileName, remainingFailures.length)
+    );
+    return false;
+  }
+
+  private async handleFileTranslationError(
+    document: vscode.TextDocument,
+    error: any
+  ): Promise<void> {
+    const fileName = path.basename(document.fileName);
+    const reason = error?.message || error?.toString() || 'Unknown error';
+    const message = vscode.l10n.t('message.failedFile', fileName, reason);
+    logger.notifyError(message, error);
+
+    const retryLabel = vscode.l10n.t('action.retryFile');
+    const selection = await vscode.window.showErrorMessage(
+      `Doc Translate: ${message}`,
+      retryLabel,
+      vscode.l10n.t('action.viewLogs')
+    );
+
+    if (selection === vscode.l10n.t('action.viewLogs')) {
+      logger.show();
+      return;
+    }
+
+    if (selection === retryLabel) {
+      this.scheduleRetry(document);
+    }
+  }
+
+  private scheduleRetry(document: vscode.TextDocument): void {
+    setTimeout(() => this.preTranslateDocument(document), 100);
+  }
+
+  /**
+   * Clear decorations for a file (called when explicitly clearing cache)
+   */
+  clearFileCache(uri: vscode.Uri): void {
+    this.inlineProvider.clearFileDecorations(uri);
+    logger.info(`Cleared decorations for: ${uri.fsPath}`);
+  }
+
+  /**
+   * Clear all decorations
+   */
+  clearAllCaches(): void {
+    this.inlineProvider.clearAllDecorations();
+    logger.info('Cleared all decorations');
+  }
+
+  /**
+   * Dispose resources
+   */
+  dispose(): void {
+    this.statusBarItem.dispose();
+  }
 }

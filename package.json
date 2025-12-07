@@ -1,7 +1,7 @@
 {
   "name": "doc-translate",
   "displayName": "Doc Translate",
-  "description": "複数のLLM（Claude, OpenAI, Gemini）を使用してコードのdocstringとコメントを翻訳（Python, JS, TS, Go対応）",
+  "description": "%description%",
   "version": "1.0.2",
   "publisher": "m-cube",
   "icon": "img/icon-design.png",
@@ -23,11 +23,11 @@
     "commands": [
       {
         "command": "doc-translate.clearCache",
-        "title": "Doc Translate: Clear Translation Cache"
+        "title": "%command.clearCache%"
       },
       {
         "command": "doc-translate.showLogs",
-        "title": "Doc Translate: Show Logs"
+        "title": "%command.showLogs%"
       }
     ],
     "configuration": {
@@ -41,12 +41,12 @@
             "gemini"
           ],
           "default": "anthropic",
-          "description": "使用するLLMプロバイダー"
+          "description": "%config.provider%"
         },
         "docTranslate.targetLang": {
           "type": "string",
           "default": "ja",
-          "description": "翻訳先の言語コード（例：en, ja, zh, ko, fr, de, es, it, pt, ru）"
+          "description": "%config.targetLang%"
         },
         "docTranslate.supportedLanguages": {
           "type": "array",
@@ -59,52 +59,57 @@
             "typescript",
             "go"
           ],
-          "description": "翻訳対象のプログラミング言語"
+          "description": "%config.supportedLanguages%"
         },
         "docTranslate.anthropicApiKey": {
           "type": "string",
           "default": "",
-          "description": "Anthropic APIキー（環境変数 ANTHROPIC_API_KEY が優先されます）"
+          "description": "%config.anthropicApiKey%"
         },
         "docTranslate.model": {
           "type": "string",
           "default": "claude-haiku-4-5-20251001",
-          "description": "翻訳に使用するAnthropicモデル"
+          "description": "%config.model%"
         },
         "docTranslate.openaiApiKey": {
           "type": "string",
           "default": "",
-          "description": "OpenAI APIキー（環境変数 OPENAI_API_KEY が優先されます）"
+          "description": "%config.openaiApiKey%"
         },
         "docTranslate.openaiModel": {
           "type": "string",
           "default": "gpt-4o-mini",
-          "description": "翻訳に使用するOpenAIモデル"
+          "description": "%config.openaiModel%"
+        },
+        "docTranslate.openaiBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.openaiBaseUrl%"
         },
         "docTranslate.geminiApiKey": {
           "type": "string",
           "default": "",
-          "description": "Gemini APIキー（環境変数 GEMINI_API_KEY が優先されます）"
+          "description": "%config.geminiApiKey%"
         },
         "docTranslate.geminiModel": {
           "type": "string",
           "default": "gemini-2.0-flash-exp",
-          "description": "翻訳に使用するGeminiモデル"
+          "description": "%config.geminiModel%"
         },
         "docTranslate.timeout": {
           "type": "number",
           "default": 30000,
-          "description": "APIリクエストのタイムアウト（ミリ秒）"
+          "description": "%config.timeout%"
         },
         "docTranslate.maxRetries": {
           "type": "number",
           "default": 3,
-          "description": "Rate limit発生時の最大リトライ回数"
+          "description": "%config.maxRetries%"
         },
         "docTranslate.retryInitialDelay": {
           "type": "number",
           "default": 1000,
-          "description": "リトライの初期待機時間（ミリ秒）"
+          "description": "%config.retryInitialDelay%"
         }
       }
     }

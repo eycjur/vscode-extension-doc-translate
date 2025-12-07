@@ -4,6 +4,8 @@
 
 コードのdocstringやコメントを複数のLLM（Claude, OpenAI, Gemini）で翻訳するVSCode拡張機能です。
 
+[中文 README](./README.zh-CN.md)
+
 ## 機能
 
 - **複数のLLMプロバイダー対応**: Anthropic Claude、OpenAI、Google Geminiから選択可能
