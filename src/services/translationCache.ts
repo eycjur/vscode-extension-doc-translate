@@ -21,35 +21,46 @@ export class TranslationCache {
   }
 
   /**
-   * Load cache from persistent storage
+   * Get workspace identifier for logging
+   */
+  private getWorkspaceInfo(): string {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      return workspaceFolder.name;
+    }
+    return 'no workspace';
+  }
+
+  /**
+   * Load cache from persistent storage (workspace-specific)
    */
   private load(): void {
     try {
       const stored =
-        this.context.globalState.get<Record<string, string>>(CACHE_STORAGE_KEY);
+        this.context.workspaceState.get<Record<string, string>>(CACHE_STORAGE_KEY);
       if (stored) {
         this.cache = new Map(Object.entries(stored));
         logger.info(
-          `Loaded ${this.cache.size} cached translations from storage`
+          `Loaded ${this.cache.size} cached translations from workspace storage (${this.getWorkspaceInfo()})`
         );
       } else {
-        logger.info('No cached translations found in storage');
+        logger.info(`No cached translations found in workspace storage (${this.getWorkspaceInfo()})`);
       }
     } catch (error) {
-      logger.error('Failed to load cache from storage', error);
+      logger.error('Failed to load cache from workspace storage', error);
     }
   }
 
   /**
-   * Save cache to persistent storage
+   * Save cache to persistent storage (workspace-specific)
    */
   private async save(): Promise<void> {
     try {
       const obj = Object.fromEntries(this.cache);
-      await this.context.globalState.update(CACHE_STORAGE_KEY, obj);
-      logger.debug(`Saved ${this.cache.size} cached translations to storage`);
+      await this.context.workspaceState.update(CACHE_STORAGE_KEY, obj);
+      logger.debug(`Saved ${this.cache.size} cached translations to workspace storage (${this.getWorkspaceInfo()})`);
     } catch (error) {
-      logger.error('Failed to save cache to storage', error);
+      logger.error('Failed to save cache to workspace storage', error);
     }
   }
 
