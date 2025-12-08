@@ -87,12 +87,10 @@ jobs:
       run: vsce package
 
     - name: Publish to VS Code Marketplace
-      if: ${{ secrets.VSCE_PAT != '' }}
       run: vsce publish -p ${{ secrets.VSCE_PAT }}
       continue-on-error: true
 
     - name: Publish to Open VSX Registry
-      if: ${{ secrets.OPEN_VSX_TOKEN != '' }}
       run: ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
       continue-on-error: true
 

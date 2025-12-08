@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
 import { BaseProvider } from './base/baseProvider';
-import { withRetry } from '../utils/retryHelper';
 import { ConfigManager } from '../utils/config';
 
 // Google Generative AI SDK types (will be installed later)
@@ -22,7 +21,7 @@ export class GeminiProvider extends BaseProvider {
     this.initializeClient();
   }
 
-  private async initializeClient(): Promise<void> {
+  protected async initializeClient(): Promise<void> {
     const apiKey = ConfigManager.getGeminiApiKey();
     if (apiKey) {
       try {
@@ -42,274 +41,79 @@ export class GeminiProvider extends BaseProvider {
     }
   }
 
-  async translate(text: string, targetLang: string): Promise<string> {
-    this.logTranslationStart('Gemini', text, targetLang);
-
-    const skipResult = await this.checkTranslationNeeded(text, targetLang);
-    if (skipResult !== null) {
-      return skipResult;
-    }
-
-    if (!this.client || !this.model) {
-      logger.info('Client not initialized, attempting re-initialization');
-      await this.initializeClient();
-      if (!this.client || !this.model) {
-        const errorMsg = vscode.l10n.t('error.gemini.apiKeyMissing');
-        logger.notifyCriticalError(errorMsg, undefined, [
-          {
-            label: vscode.l10n.t('action.openSettings'),
-            callback: () =>
-              vscode.commands.executeCommand(
-                'workbench.action.openSettings',
-                'docTranslate.geminiApiKey'
-              )
-          }
-        ]);
-        throw new Error(errorMsg);
-      }
-    }
-
-    const prompt = this.buildPrompt(text, targetLang);
-    const timeout = ConfigManager.getTimeout();
-    const retryConfig = ConfigManager.getRetryConfig();
-
-    logger.debug(
-      `Using model: ${ConfigManager.getGeminiModel()}, timeout: ${timeout}ms`
-    );
-    this.logPrompt('Gemini', prompt);
-
-    try {
-      const translation = await withRetry(
-        async () => {
-          logger.info('Sending request to Gemini API...');
-          const startTime = Date.now();
-
-          // Create a timeout promise
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('timeout')), timeout);
-          });
-
-          // Race between the API call and timeout
-          const response = await Promise.race([
-            this.model!.generateContent(prompt),
-            timeoutPromise
-          ]);
-
-          const duration = Date.now() - startTime;
-          logger.info(`Gemini API response received (${duration}ms)`);
-
-          if (!response || !response.response) {
-            throw new Error(vscode.l10n.t('error.gemini.emptyResponse'));
-          }
-
-          const text = response.response.text();
-          if (!text) {
-            throw new Error(vscode.l10n.t('error.gemini.noContent'));
-          }
-
-          const translatedText = text.trim();
-          this.logTranslationSuccess('Gemini', translatedText);
-
-          return translatedText;
-        },
-        retryConfig,
-        'Gemini translation'
-      );
-
-      return translation;
-    } catch (error: any) {
-      this.handleTranslationError('Gemini', error, timeout);
-    }
+  protected getProviderName(): string {
+    return 'Gemini';
   }
 
-  async translateBatch(texts: string[], targetLang: string): Promise<string[]> {
-    this.logBatchTranslationStart('Gemini', texts.length, targetLang);
-    logger.debug('Texts to translate:', {
-      texts: texts.map((t) => t.substring(0, 50) + (t.length > 50 ? '...' : ''))
+  protected getModel(): string {
+    return ConfigManager.getGeminiModel();
+  }
+
+  protected getApiKeyMissingError(): string {
+    return vscode.l10n.t('error.gemini.apiKeyMissing');
+  }
+
+  protected getSettingsKey(): string {
+    return 'docTranslate.geminiApiKey';
+  }
+
+  protected isClientInitialized(): boolean {
+    return this.client !== null && this.model !== null;
+  }
+
+  protected async callTranslationAPI(
+    prompt: string,
+    timeout: number
+  ): Promise<string> {
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('timeout')), timeout);
     });
 
-    if (texts.length === 0) {
-      return [];
+    // Race between the API call and timeout
+    const response = await Promise.race([
+      this.model!.generateContent(prompt),
+      timeoutPromise
+    ]);
+
+    if (!response || !response.response) {
+      throw new Error(vscode.l10n.t('error.gemini.emptyResponse'));
     }
 
-    if (!this.client || !this.model) {
-      logger.info(
-        'Client not initialized, attempting re-initialization for batch'
-      );
-      await this.initializeClient();
-      if (!this.client || !this.model) {
-        const errorMsg = vscode.l10n.t('error.gemini.apiKeyMissing');
-        logger.notifyCriticalError(errorMsg, undefined, [
-          {
-            label: vscode.l10n.t('action.openSettings'),
-            callback: () =>
-              vscode.commands.executeCommand(
-                'workbench.action.openSettings',
-                'docTranslate.geminiApiKey'
-              )
-          }
-        ]);
-        throw new Error(errorMsg);
-      }
+    const text = response.response.text();
+    if (!text) {
+      throw new Error(vscode.l10n.t('error.gemini.noContent'));
     }
 
-    // Check if translation is needed for each text
-    const checkedTexts: {
-      original: string;
-      index: number;
-      skipResult: string | null;
-    }[] = await Promise.all(
-      texts.map(async (text, index) => ({
-        original: text,
-        index,
-        skipResult: await this.checkTranslationNeeded(text, targetLang)
-      }))
-    );
+    return text.trim();
+  }
 
-    const textsToTranslate = checkedTexts
-      .filter((item) => item.skipResult === null)
-      .map((item) => item.original);
+  protected async callBatchTranslationAPI(
+    prompt: string,
+    timeout: number,
+    textsCount: number
+  ): Promise<string> {
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('timeout')), timeout);
+    });
 
-    if (textsToTranslate.length === 0) {
-      const results: string[] = [];
-      checkedTexts.forEach((item) => {
-        if (item.skipResult !== null) {
-          results[item.index] = item.skipResult;
-        }
-      });
-      return results;
+    // Race between the API call and timeout
+    const result = await Promise.race([
+      this.model!.generateContent(prompt),
+      timeoutPromise
+    ]);
+
+    if (!result || !result.response) {
+      throw new Error(vscode.l10n.t('error.gemini.emptyResponse'));
     }
 
-    const prompt = this.buildBatchPrompt(textsToTranslate, targetLang);
-    const timeout = ConfigManager.getTimeout();
-    const retryConfig = ConfigManager.getRetryConfig();
-
-    logger.debug(
-      `Using model: ${ConfigManager.getGeminiModel()}, timeout: ${timeout}ms for batch`
-    );
-    this.logBatchPrompt('Gemini', prompt);
-
-    try {
-      const batchTranslation = await withRetry(
-        async () => {
-          logger.info('Sending batch request to Gemini API...');
-          const startTime = Date.now();
-
-          // Create a timeout promise
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('timeout')), timeout);
-          });
-
-          // Race between the API call and timeout
-          const result = await Promise.race([
-            this.model!.generateContent(prompt),
-            timeoutPromise
-          ]);
-
-          const duration = Date.now() - startTime;
-          logger.info(`Gemini batch API response received (${duration}ms)`);
-
-          if (!result || !result.response) {
-            throw new Error(vscode.l10n.t('error.gemini.emptyResponse'));
-          }
-
-          const content = result.response.text();
-          if (!content) {
-            throw new Error(vscode.l10n.t('error.gemini.noContent'));
-          }
-
-          logger.info('Gemini batch response received, attempting to parse...');
-          logger.debug('Raw Gemini batch response:', content);
-
-          try {
-            // Attempt to parse JSON response
-            const jsonMatch =
-              content.match(/```json\n([\s\S]*?)\n```/) ||
-              content.match(/```\n([\s\S]*?)\n```/);
-            const jsonStr = jsonMatch ? jsonMatch[1] : content;
-
-            const parsed = JSON.parse(jsonStr);
-            let translatedItems: string[] = [];
-
-            if (Array.isArray(parsed)) {
-              translatedItems = parsed.map((item: any) => String(item).trim());
-            } else if (
-              parsed.translations &&
-              Array.isArray(parsed.translations)
-            ) {
-              translatedItems = parsed.translations.map((item: any) =>
-                String(item).trim()
-              );
-            } else {
-              throw new Error('Unexpected JSON structure for batch response.');
-            }
-
-            if (translatedItems.length !== textsToTranslate.length) {
-              logger.warn(
-                `Gemini batch response count mismatch. Expected ${textsToTranslate.length}, got ${translatedItems.length}. Falling back to sequential translation.`
-              );
-              // If parsing fails or count mismatches, fall back to sequential translation for the untranslated items
-              return super.translateBatch(textsToTranslate, targetLang);
-            }
-
-            this.logBatchTranslationSuccess('Gemini', translatedItems);
-
-            const finalResults: string[] = new Array(texts.length);
-            let translatedIdx = 0;
-            for (let i = 0; i < texts.length; i++) {
-              const checkedItem = checkedTexts.find((item) => item.index === i);
-              if (checkedItem && checkedItem.skipResult !== null) {
-                finalResults[i] = checkedItem.skipResult;
-              } else {
-                finalResults[i] = translatedItems[translatedIdx++];
-              }
-            }
-            return finalResults;
-          } catch (e: any) {
-            logger.error(
-              'Failed to parse Gemini batch response as JSON, attempting fallback:',
-              e
-            );
-            // If JSON parsing fails, try to split by lines or other heuristics, or fall back to sequential
-            // For now, falling back to sequential for robustness
-            logger.warn(
-              'Falling back to sequential translation for batch due to parsing error.'
-            );
-            return super.translateBatch(textsToTranslate, targetLang);
-          }
-        },
-        retryConfig,
-        'Gemini batch translation'
-      );
-
-      const finalResults: string[] = new Array(texts.length);
-      let translatedIdx = 0;
-      for (let i = 0; i < texts.length; i++) {
-        const checkedItem = checkedTexts.find((item) => item.index === i);
-        if (checkedItem && checkedItem.skipResult !== null) {
-          finalResults[i] = checkedItem.skipResult;
-        } else {
-          finalResults[i] = batchTranslation[translatedIdx++];
-        }
-      }
-      return finalResults;
-    } catch (error: any) {
-      if (error.message === 'timeout') {
-        const errorMsg = vscode.l10n.t('error.translation.timeout', timeout);
-        logger.notifyError(errorMsg);
-        throw new Error(errorMsg);
-      }
-      const errorMsg = vscode.l10n.t(
-        'error.translation.failed',
-        error.message || 'Unknown error'
-      );
-      logger.notifyError(errorMsg, error);
-      // Fallback to sequential translation if batch fails
-      logger.warn(
-        `Gemini batch translation failed, falling back to sequential. Error: ${error}`
-      );
-      return super.translateBatch(textsToTranslate, targetLang);
+    const content = result.response.text();
+    if (!content) {
+      throw new Error(vscode.l10n.t('error.gemini.noContent'));
     }
+
+    return content.trim();
   }
 
   updateConfiguration(): void {
