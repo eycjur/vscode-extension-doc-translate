@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import { logger } from '../../utils/logger';
 import { isTranslationNeeded } from '../../utils/languageDetector';
 import { LANGUAGE_NAMES } from '../../utils/constants';
-import { withRetry } from '../../utils/retryHelper';
-import { ConfigManager } from '../../utils/config';
 
 /**
  * Base class for translation providers

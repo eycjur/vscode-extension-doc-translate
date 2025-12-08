@@ -126,11 +126,12 @@ suite('MarkdownBlockDetector Test Suite', () => {
   test('should extract blocks from real Markdown file', async () => {
     const path = require('path');
     const fs = require('fs');
-    const samplePath = path.join(__dirname, 'assets', 'sample.md');
+    // Point to source directory since .md files are not copied to out/
+    const samplePath = path.join(__dirname, '..', '..', 'src', 'test', 'assets', 'sample.md');
 
     // Check if file exists
     if (!fs.existsSync(samplePath)) {
-      assert.fail('sample.md not found in test/assets');
+      assert.fail(`sample.md not found at ${samplePath}`);
     }
 
     const uri = vscode.Uri.file(samplePath);
