@@ -122,6 +122,69 @@ suite('MarkdownBlockDetector Test Suite', () => {
     assert.strictEqual(blocks[0].range.start.character, 4);
     assert.strictEqual(blocks[0].range.end.character, 17);
   });
+
+  test('should extract blocks from real Markdown file', async () => {
+    const path = require('path');
+    const fs = require('fs');
+    // Point to source directory since .md files are not copied to out/
+    const samplePath = path.join(__dirname, '..', '..', 'src', 'test', 'assets', 'sample.md');
+
+    // Check if file exists
+    if (!fs.existsSync(samplePath)) {
+      assert.fail(`sample.md not found at ${samplePath}`);
+    }
+
+    const uri = vscode.Uri.file(samplePath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    const blocks = await detector.extractAllBlocks(document);
+
+    // Verify we extracted meaningful blocks
+    assert.ok(blocks.length > 0, 'Should extract at least some blocks');
+
+    // Check that we extracted headers (with # markers)
+    const headerBlocks = blocks.filter(b =>
+      b.text.startsWith('# User Guide') ||
+      b.text.startsWith('## Installation')
+    );
+    assert.ok(headerBlocks.length > 0, 'Should extract header blocks');
+
+    // Check that we extracted paragraphs
+    const paragraphBlocks = blocks.filter(b =>
+      b.text.includes('comprehensive guide') ||
+      b.text.includes('Install the extension')
+    );
+    assert.ok(paragraphBlocks.length > 0, 'Should extract paragraph blocks');
+
+    // Check that we extracted list items
+    const listBlocks = blocks.filter(b =>
+      b.text.includes('Open VS Code') ||
+      b.text.includes('Click Install')
+    );
+    assert.ok(listBlocks.length > 0, 'Should extract list item blocks');
+
+    // Verify code blocks are ignored
+    const codeBlocks = blocks.filter(b =>
+      b.text.includes('export ANTHROPIC_API_KEY') ||
+      b.text.includes('export OPENAI_API_KEY')
+    );
+    assert.strictEqual(codeBlocks.length, 0, 'Should not extract code blocks');
+
+    // Verify HTML comments are ignored
+    const commentBlocks = blocks.filter(b =>
+      b.text.includes('This is a comment that should be ignored')
+    );
+    assert.strictEqual(commentBlocks.length, 0, 'Should not extract HTML comments');
+
+    // Verify images are ignored
+    const imageBlocks = blocks.filter(b =>
+      b.text.includes('Extension Icon') || b.text.includes('icon.png')
+    );
+    assert.strictEqual(imageBlocks.length, 0, 'Should not extract image markers');
+
+    // Verify horizontal rules are ignored
+    const hrBlocks = blocks.filter(b => b.text === '---');
+    assert.strictEqual(hrBlocks.length, 0, 'Should not extract horizontal rules');
+  });
 });
 
 async function createMockDocument(

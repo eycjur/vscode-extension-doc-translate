@@ -1,7 +1,8 @@
-import { ITranslationProvider } from './base/translationProvider';
+import { BaseProvider } from './base/baseProvider';
 import { AnthropicProvider } from './anthropicProvider';
 import { OpenAIProvider } from './openaiProvider';
 import { GeminiProvider } from './geminiProvider';
+import { AzureOpenAIProvider } from './azureOpenaiProvider';
 import { logger } from '../utils/logger';
 import { ConfigManager } from '../utils/config';
 import { LLMProvider } from '../utils/constants';
@@ -10,13 +11,13 @@ import { LLMProvider } from '../utils/constants';
  * Factory for creating translation providers based on configuration
  */
 export class TranslationProviderFactory {
-    private static cachedProvider: ITranslationProvider | null = null;
+    private static cachedProvider: BaseProvider | null = null;
     private static cachedProviderType: LLMProvider | null = null;
 
     /**
      * Get the translation provider based on current configuration
      */
-    static getProvider(): ITranslationProvider {
+    static getProvider(): BaseProvider {
         const provider = ConfigManager.getProvider();
 
         // Return cached provider if same type
@@ -36,6 +37,9 @@ export class TranslationProviderFactory {
                 break;
             case 'gemini':
                 this.cachedProvider = new GeminiProvider();
+                break;
+            case 'azure-openai':
+                this.cachedProvider = new AzureOpenAIProvider();
                 break;
             default:
                 logger.warn(`Unknown provider: ${provider}, falling back to Anthropic`);

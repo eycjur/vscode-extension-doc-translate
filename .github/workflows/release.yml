@@ -1,0 +1,117 @@
+name: Release Extension
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    name: Check Version Change
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install vsce
+      run: npm install -g @vscode/vsce
+
+    - name: Check if version changed
+      id: check
+      run: |
+        # Get current version from package.json
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        echo "Current version: $CURRENT_VERSION"
+
+        # Get published version from VS Code Marketplace
+        MARKETPLACE_VERSION=$(vsce show m-cube.doc-translate --json 2>/dev/null | jq -r '.versions[0].version' || echo "0.0.0")
+        echo "Marketplace version: $MARKETPLACE_VERSION"
+
+        # Check if version is different (and newer)
+        if [ "$CURRENT_VERSION" != "$MARKETPLACE_VERSION" ]; then
+          echo "Version changed from $MARKETPLACE_VERSION to $CURRENT_VERSION"
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        else
+          echo "Version unchanged ($CURRENT_VERSION)"
+          echo "should_release=false" >> $GITHUB_OUTPUT
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        fi
+
+  release:
+    name: Release to Marketplaces
+    runs-on: ubuntu-latest
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Compile TypeScript
+      run: npm run compile
+
+    - name: Run tests
+      run: xvfb-run -a npm run test
+      env:
+        ANTHROPIC_API_KEY: test-key-anthropic
+        OPENAI_API_KEY: test-key-openai
+        GEMINI_API_KEY: test-key-gemini
+        CI: 'true'
+
+    - name: Install vsce and ovsx
+      run: |
+        npm install -g @vscode/vsce
+        npm install -g ovsx
+
+    - name: Package extension
+      run: vsce package
+
+    - name: Publish to VS Code Marketplace
+      if: ${{ secrets.VSCE_PAT != '' }}
+      run: vsce publish -p ${{ secrets.VSCE_PAT }}
+      continue-on-error: true
+
+    - name: Publish to Open VSX Registry
+      if: ${{ secrets.OPEN_VSX_TOKEN != '' }}
+      run: ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
+      continue-on-error: true
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ needs.check-version.outputs.version }}
+        name: Release v${{ needs.check-version.outputs.version }}
+        body: |
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+        files: '*.vsix'
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload VSIX as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vscode-extension-v${{ needs.check-version.outputs.version }}
+        path: '*.vsix'
+        retention-days: 90

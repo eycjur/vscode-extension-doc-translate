@@ -42,14 +42,15 @@ export class ConfigManager {
 
   /**
    * Get Anthropic API key
+   * Priority: VSCode settings > Environment variable
    */
   static getAnthropicApiKey(): string | undefined {
-    const envKey = process.env.ANTHROPIC_API_KEY;
-    if (envKey) {
-      return envKey;
-    }
     const configKey = this.getConfig().get<string>('anthropicApiKey');
-    return configKey && configKey.trim() !== '' ? configKey : undefined;
+    if (configKey && configKey.trim() !== '') {
+      return configKey;
+    }
+    const envKey = process.env.ANTHROPIC_API_KEY;
+    return envKey || undefined;
   }
 
   /**
@@ -63,14 +64,15 @@ export class ConfigManager {
 
   /**
    * Get OpenAI API key
+   * Priority: VSCode settings > Environment variable
    */
   static getOpenAIApiKey(): string | undefined {
-    const envKey = process.env.OPENAI_API_KEY;
-    if (envKey) {
-      return envKey;
-    }
     const configKey = this.getConfig().get<string>('openaiApiKey');
-    return configKey && configKey.trim() !== '' ? configKey : undefined;
+    if (configKey && configKey.trim() !== '') {
+      return configKey;
+    }
+    const envKey = process.env.OPENAI_API_KEY;
+    return envKey || undefined;
   }
 
   /**
@@ -92,14 +94,15 @@ export class ConfigManager {
 
   /**
    * Get Gemini API key
+   * Priority: VSCode settings > Environment variable
    */
   static getGeminiApiKey(): string | undefined {
-    const envKey = process.env.GEMINI_API_KEY;
-    if (envKey) {
-      return envKey;
-    }
     const configKey = this.getConfig().get<string>('geminiApiKey');
-    return configKey && configKey.trim() !== '' ? configKey : undefined;
+    if (configKey && configKey.trim() !== '') {
+      return configKey;
+    }
+    const envKey = process.env.GEMINI_API_KEY;
+    return envKey || undefined;
   }
 
   /**
@@ -139,5 +142,45 @@ export class ConfigManager {
         'go'
       ]
     );
+  }
+
+  /**
+   * Get Azure OpenAI API key
+   * Priority: VSCode settings > Environment variable
+   */
+  static getAzureOpenAIApiKey(): string | undefined {
+    const configKey = this.getConfig().get<string>('azureOpenaiApiKey');
+    if (configKey && configKey.trim() !== '') {
+      return configKey;
+    }
+    const envKey = process.env.AZURE_OPENAI_API_KEY;
+    return envKey || undefined;
+  }
+
+  /**
+   * Get Azure OpenAI endpoint
+   * Priority: VSCode settings > Environment variable
+   */
+  static getAzureOpenAIEndpoint(): string | undefined {
+    const configEndpoint = this.getConfig().get<string>('azureOpenaiEndpoint');
+    if (configEndpoint && configEndpoint.trim() !== '') {
+      return configEndpoint;
+    }
+    const envEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    return envEndpoint || undefined;
+  }
+
+  /**
+   * Get Azure OpenAI API version
+   */
+  static getAzureOpenAIApiVersion(): string {
+    return this.getConfig().get<string>('azureOpenaiApiVersion') || DEFAULT_CONFIG.AZURE_OPENAI_API_VERSION;
+  }
+
+  /**
+   * Get Azure OpenAI deployment name
+   */
+  static getAzureOpenAIDeploymentName(): string {
+    return this.getConfig().get<string>('azureOpenaiDeploymentName') || DEFAULT_CONFIG.AZURE_OPENAI_DEPLOYMENT_NAME;
   }
 }

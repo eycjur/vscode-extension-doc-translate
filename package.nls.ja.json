@@ -1,5 +1,5 @@
 {
-  "description": "複数のLLM（Claude, OpenAI, Gemini）を使用してコードのdocstringとコメントを翻訳（Python, JS, TS, Go対応）",
+  "description": "複数のLLM（Claude, OpenAI, Gemini, Azure OpenAI）を使用してコードのdocstringとコメントを翻訳（Python, JS, TS, Go, Markdown対応）",
   "config.provider": "使用するLLMプロバイダー",
   "config.targetLang": "翻訳先の言語コード（例：en, ja, zh, ko, fr, de, es, it, pt, ru）",
   "config.supportedLanguages": "翻訳対象のプログラミング言語",
@@ -10,6 +10,10 @@
   "config.openaiBaseUrl": "OpenAI Base URL（オプション）",
   "config.geminiApiKey": "Gemini APIキー（環境変数 GEMINI_API_KEY が優先されます）",
   "config.geminiModel": "翻訳に使用するGeminiモデル",
+  "config.azureOpenaiApiKey": "Azure OpenAI APIキー（環境変数 AZURE_OPENAI_API_KEY が優先されます）",
+  "config.azureOpenaiEndpoint": "Azure OpenAI エンドポイントURL（例: https://your-resource.openai.azure.com/）",
+  "config.azureOpenaiApiVersion": "Azure OpenAI APIバージョン",
+  "config.azureOpenaiDeploymentName": "Azure OpenAI デプロイメント名",
   "config.timeout": "APIリクエストのタイムアウト（ミリ秒）",
   "config.maxRetries": "Rate limit発生時の最大リトライ回数",
   "config.retryInitialDelay": "リトライの初期待機時間（ミリ秒）",

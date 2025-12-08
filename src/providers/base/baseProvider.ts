@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { logger } from '../../utils/logger';
 import { isTranslationNeeded } from '../../utils/languageDetector';
 import { LANGUAGE_NAMES } from '../../utils/constants';
@@ -6,6 +7,109 @@ import { LANGUAGE_NAMES } from '../../utils/constants';
  * Base class for translation providers
  */
 export abstract class BaseProvider {
+  /**
+   * Log translation start
+   */
+  protected logTranslationStart(
+    providerName: string,
+    text: string,
+    targetLang: string
+  ): void {
+    logger.info(
+      `${providerName} translation request received (text length: ${text.length} chars, target: ${targetLang})`
+    );
+    logger.debug('Text to translate:', {
+      text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+    });
+  }
+
+  /**
+   * Log batch translation start
+   */
+  protected logBatchTranslationStart(
+    providerName: string,
+    count: number,
+    targetLang: string
+  ): void {
+    logger.info(
+      `${providerName} batch translation request received (count: ${count}, target: ${targetLang})`
+    );
+  }
+
+  /**
+   * Log prompt with borders
+   */
+  protected logPrompt(providerName: string, prompt: string): void {
+    logger.info('='.repeat(60));
+    logger.info(`${providerName.toUpperCase()} REQUEST PROMPT:`);
+    logger.info('-'.repeat(60));
+    logger.info(prompt);
+    logger.info('='.repeat(60));
+  }
+
+  /**
+   * Log batch prompt with borders
+   */
+  protected logBatchPrompt(providerName: string, prompt: string): void {
+    logger.info('='.repeat(60));
+    logger.info(`${providerName.toUpperCase()} BATCH REQUEST PROMPT:`);
+    logger.info('-'.repeat(60));
+    logger.info(prompt);
+    logger.info('='.repeat(60));
+  }
+
+  /**
+   * Log translation success with borders
+   */
+  protected logTranslationSuccess(
+    providerName: string,
+    translatedText: string
+  ): void {
+    logger.info('Translation successful');
+    logger.info('='.repeat(60));
+    logger.info(`${providerName.toUpperCase()} RESPONSE:`);
+    logger.info('-'.repeat(60));
+    logger.info(translatedText);
+    logger.info('='.repeat(60));
+  }
+
+  /**
+   * Log batch translation success with borders
+   */
+  protected logBatchTranslationSuccess(
+    providerName: string,
+    results: string[]
+  ): void {
+    logger.info('Batch translation successful');
+    logger.info('='.repeat(60));
+    logger.info(`${providerName.toUpperCase()} BATCH RESPONSE:`);
+    logger.info('-'.repeat(60));
+    logger.info(JSON.stringify(results, null, 2));
+    logger.info('='.repeat(60));
+  }
+
+  /**
+   * Handle translation errors uniformly
+   * Returns never (always throws)
+   */
+  protected handleTranslationError(
+    providerName: string,
+    error: any,
+    timeout: number
+  ): never {
+    if (error.name === 'AbortError' || error.message === 'timeout') {
+      const errorMsg = vscode.l10n.t('error.translation.timeout', timeout);
+      logger.notifyError(errorMsg);
+      throw new Error(errorMsg);
+    }
+    const errorMsg = vscode.l10n.t(
+      'error.translation.failed',
+      error.message || 'Unknown error'
+    );
+    logger.notifyError(errorMsg, error);
+    throw new Error(`${providerName} translation failed: ${error.message}`);
+  }
+
   /**
    * Build translation prompt
    */
@@ -28,20 +132,6 @@ ${text}`;
   }
 
   /**
-   * Check if translation is needed and return original text if not
-   */
-  protected async checkTranslationNeeded(
-    text: string,
-    targetLang: string
-  ): Promise<string | null> {
-    if (!(await isTranslationNeeded(text, targetLang))) {
-      logger.info('Translation not needed, returning original text');
-      return text;
-    }
-    return null;
-  }
-
-  /**
    * Build batch translation prompt
    */
   protected buildBatchPrompt(texts: string[], targetLang: string): string {
@@ -61,22 +151,58 @@ ${JSON.stringify(texts, null, 2)}`;
   }
 
   /**
+   * Check if translation is needed and return original text if not
+   * Also checks if text contains only symbols
+   */
+  protected async checkTranslationNeeded(
+    text: string,
+    targetLang: string
+  ): Promise<string | null> {
+    // Check if text contains only symbols
+    if (this.isSymbolOnly(text)) {
+      logger.info('Text contains only symbols, skipping translation');
+      return text;
+    }
+
+    // Check if translation is needed (language detection)
+    if (!(await isTranslationNeeded(text, targetLang))) {
+      logger.info('Translation not needed, returning original text');
+      return text;
+    }
+    return null;
+  }
+
+  /**
+   * Check if text contains only symbols/punctuation
+   */
+  protected isSymbolOnly(text: string): boolean {
+    // Remove whitespace and check if remaining characters are only symbols/punctuation
+    const cleaned = text.replace(/\s/g, '');
+    // Check if text contains at least one letter or number
+    return !/[a-zA-Z0-9\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(cleaned);
+  }
+
+  /**
    * Abstract method to be implemented by concrete providers
    */
   abstract translate(text: string, targetLang: string): Promise<string>;
 
   /**
-   * Batch translation method (can be overridden by providers for optimization)
-   * Default implementation uses JSON array strategy
+   * Batch translation method
+   *
+   * Default fallback: translate one by one if not implemented.
+   * But we want to enforce batching, so each provider should override this method
+   * to use buildBatchPrompt() and send multiple texts in a single API request.
+   *
+   * This default implementation calls translate() sequentially as a fallback.
+   * It's used when:
+   * - Provider's batch translation fails and falls back to sequential processing
+   * - New provider doesn't implement batch translation yet
+   *
+   * All existing providers (Anthropic, OpenAI, Gemini, Azure OpenAI) override this
+   * to use the actual batch prompt with JSON array strategy.
    */
   async translateBatch(texts: string[], targetLang: string): Promise<string[]> {
-    // Default fallback: translate one by one if not implemented
-    // But we want to enforce batching, so let's throw if not implemented by subclass
-    // or provide a default implementation using buildBatchPrompt if the provider supports it.
-    // Since we are modifying all providers, we can make this abstract or provide a default implementation.
-    // Let's provide a default implementation that calls translate() sequentially as a fallback,
-    // but we will override it in all providers to use the actual batch prompt.
-
     const results: string[] = [];
     for (const text of texts) {
       try {

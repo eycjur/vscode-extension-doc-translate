@@ -1,160 +1,158 @@
 # Doc Translate
 
 [![CI](https://github.com/eycjur/vscode-extension-doc-translate/actions/workflows/ci.yml/badge.svg)](https://github.com/eycjur/vscode-extension-doc-translate/actions/workflows/ci.yml)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/m-cube.doc-translate)](https://marketplace.visualstudio.com/items?itemName=m-cube.doc-translate)
+[![Open VSX](https://img.shields.io/open-vsx/v/m-cube/doc-translate)](https://open-vsx.org/extension/m-cube/doc-translate)
 
-コードのdocstringやコメントを複数のLLM（Claude, OpenAI, Gemini）で翻訳するVSCode拡張機能です。
+Translate code docstrings and comments using multiple LLMs (Claude, OpenAI, Gemini, Azure OpenAI) in VSCode.
 
-[中文 README](./README.zh-CN.md)
+**[日本語README](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/README.ja.md)** | **[中文 README](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/README.zh-CN.md)**
 
-## 機能
+## Features
 
-- **複数のLLMプロバイダー対応**: Anthropic Claude、OpenAI、Google Geminiから選択可能
-- **複数のプログラミング言語対応**: Python、JavaScript、TypeScript、Goに対応
-- **自動言語検出**: コメントの言語を自動検出し、同じ言語なら翻訳をスキップ
-- **多言語翻訳対応**: 10言語以上の翻訳先言語をサポート
-- **インライン翻訳表示**: ファイルを開くと、docstringとコメントの翻訳がコード内に常時表示
-  - **コメント**（`#`）: 各行の右側に翻訳を表示（例: `# comment → コメント`）
-  - **Docstring**（`"""`/`'''`）: 元のテキストを隠して翻訳を上書き表示
-  - **カーソル・選択時は原文表示**: docstringにカーソルがあるか選択すると翻訳が自動的に非表示になり原文が見える
-  - ホバー不要、常に表示されている
-  - グレーアウトされた斜体で表示、邪魔にならない
-  - ファイルは変更されない（見た目のみの変更）
-- **ファイルを開くだけで自動翻訳**: Pythonファイルを開くと、すべてのdocstringとコメントを自動的にバックグラウンドで翻訳
-  - ステータスバーに進捗表示
-  - スマートキャッシング: ファイルごとに1回のみ翻訳
-  - ファイル保存時も自動再翻訳（キャッシュを活用）
-  - **並列翻訳**: 最大5個のリクエストを同時実行（rate limit対策）
-- **LSP駆動の検出**: VSCodeのLanguage Server Protocol (Pylance)を使用した正確なdocstring検出
-- **翻訳対象**:
-  - モジュールdocstring（ファイル先頭のdocstring）
-  - クラス・関数・メソッドのdocstring（`"""`と`'''`）
-  - インラインコメント（`#`）
-- **永続化キャッシュ**: ディスクに保存される永続的なキャッシュでAPI呼び出しを最小化
-  - 拡張機能を再起動しても翻訳結果が保持される
-  - VSCodeのglobalStateに保存
-- **進捗インジケーター**: 翻訳中はステータスバーに進捗を表示
-- **エラーハンドリング**: 翻訳失敗時に対象ファイル・失敗ブロック数を通知し、再試行やログ確認アクションを提供
-- **詳細なログ**: LSPクエリ、APIリクエスト/レスポンス、デバッグ情報を記録
-- **エラー通知**: 非侵入的なエラー通知システム
-  - **Critical Error**: ダイアログで表示（APIキー未設定など）
-  - **Error**: ステータスバーで表示（タイムアウト、翻訳失敗など）
-  - スパム防止機能（同じエラーは60秒に1回のみ）
-- **設定可能**: 環境変数とVSCode設定の両方に対応
+- **Multiple LLM Providers**: Anthropic Claude, OpenAI, Google Gemini, Azure OpenAI
+- **Multi-Language Support**: Python, JavaScript, TypeScript, Go, Markdown
+- **Inline Translation Display**: Translations shown directly in code (comments on the right, docstrings as overlay)
+- **Automatic Translation**: Translates on file open/save with smart caching and batch processing
+- **Language Detection**: Automatically skips translation if text is already in target language
+- **Persistent Cache**: Saves translations across sessions to minimize API calls
+- **Error Handling**: Non-intrusive notifications with retry options
+- **Configurable**: Environment variables and VSCode settings support
 
-## ドキュメント
+## Documentation
 
-- [アーキテクチャ](docs/ARCHITECTURE.md) - システムアーキテクチャの詳細
-- [開発ガイド](docs/CONTRIBUTING.md) - 開発者向けガイド
+- [Architecture](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/ARCHITECTURE.md) - System architecture details
+- [Contributing Guide](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/CONTRIBUTING.md) - Developer guide
 
-## 必要要件
+## Requirements
 
-- **LLM APIキー**: 以下のいずれかのLLMプロバイダーのAPIキーが必要です
-  - **Anthropic Claude**: `ANTHROPIC_API_KEY` 環境変数、または `docTranslate.anthropicApiKey` 設定
-  - **OpenAI**: `OPENAI_API_KEY` 環境変数、または `docTranslate.openaiApiKey` 設定
-  - **Google Gemini**: `GEMINI_API_KEY` 環境変数、または `docTranslate.geminiApiKey` 設定
-- **言語拡張機能**: 各言語のLSPサポートが必要
-  - **Python**: Python拡張機能（Pylance付き）
-  - **JavaScript/TypeScript**: 通常、VSCodeに標準搭載
-  - **Go**: Go拡張機能
+- **LLM API Key**: You need an API key for at least one of the following LLM providers:
+  - **Anthropic Claude**: `ANTHROPIC_API_KEY` environment variable or `docTranslate.anthropicApiKey` setting
+  - **OpenAI**: `OPENAI_API_KEY` environment variable or `docTranslate.openaiApiKey` setting
+  - **Google Gemini**: `GEMINI_API_KEY` environment variable or `docTranslate.geminiApiKey` setting
+  - **Azure OpenAI**: `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` environment variables or corresponding settings
+- **Language Extensions**: LSP support required for each language
+  - **Python**: Python extension (with Pylance)
+  - **JavaScript/TypeScript**: Usually built into VSCode
+  - **Go**: Go extension
 
-## 拡張機能の設定
+## Extension Settings
 
-この拡張機能は以下の設定項目を提供します：
+This extension contributes the following settings:
 
-### 基本設定
-* `docTranslate.provider`: 使用するLLMプロバイダー（`anthropic`、`openai`、`gemini`、デフォルト: `anthropic`）
-* `docTranslate.targetLang`: 翻訳先の言語コード（デフォルト: `ja`）
-  - 翻訳元言語は自動検出されます
-  - 対応言語: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru` など
-* `docTranslate.supportedLanguages`: 翻訳対象のプログラミング言語（デフォルト: `["python", "javascript", "typescript", "go"]`）
-* `docTranslate.timeout`: APIリクエストのタイムアウト（ミリ秒、デフォルト: `30000`）
-* `docTranslate.maxRetries`: 最大リトライ回数（デフォルト: `3`）
-* `docTranslate.retryInitialDelay`: リトライ初期遅延（ミリ秒、デフォルト: `1000`）
+### Basic Settings
+* `docTranslate.provider`: LLM provider to use (`anthropic`, `openai`, `gemini`, `azure-openai`, default: `anthropic`)
+* `docTranslate.targetLang`: Target language code (default: `ja`)
+  - Source language is automatically detected
+  - Supported languages: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`, etc.
+* `docTranslate.supportedLanguages`: Programming languages to translate (default: `["python", "javascript", "typescript", "go"]`)
+* `docTranslate.timeout`: API request timeout in milliseconds (default: `30000`)
+* `docTranslate.maxRetries`: Maximum retry count (default: `3`)
+* `docTranslate.retryInitialDelay`: Initial retry delay in milliseconds (default: `1000`)
 
-### Anthropic Claude設定
-* `docTranslate.anthropicApiKey`: Anthropic APIキー（環境変数 `ANTHROPIC_API_KEY` が優先されます）
-* `docTranslate.model`: 使用するClaudeモデル（デフォルト: `claude-haiku-4-5-20251001`）
+### Anthropic Claude Settings
+* `docTranslate.anthropicApiKey`: Anthropic API key (this setting takes precedence over environment variable `ANTHROPIC_API_KEY`)
+* `docTranslate.model`: Claude model to use (default: `claude-haiku-4-5-20251001`)
 
-### OpenAI設定
-* `docTranslate.openaiApiKey`: OpenAI APIキー（環境変数 `OPENAI_API_KEY` が優先されます）
-* `docTranslate.openaiModel`: 使用するOpenAIモデル（デフォルト: `gpt-4o-mini`）
+### OpenAI Settings
+* `docTranslate.openaiApiKey`: OpenAI API key (this setting takes precedence over environment variable `OPENAI_API_KEY`)
+* `docTranslate.openaiModel`: OpenAI model to use (default: `gpt-4o-mini`)
 
-### Google Gemini設定
-* `docTranslate.geminiApiKey`: Gemini APIキー（環境変数 `GEMINI_API_KEY` が優先されます）
-* `docTranslate.geminiModel`: 使用するGeminiモデル（デフォルト: `gemini-2.0-flash-exp`）
+### Google Gemini Settings
+* `docTranslate.geminiApiKey`: Gemini API key (this setting takes precedence over environment variable `GEMINI_API_KEY`)
+* `docTranslate.geminiModel`: Gemini model to use (default: `gemini-2.0-flash-exp`)
 
-## 使い方
+### Azure OpenAI Settings
+* `docTranslate.azureOpenaiApiKey`: Azure OpenAI API key (this setting takes precedence over environment variable `AZURE_OPENAI_API_KEY`)
+* `docTranslate.azureOpenaiEndpoint`: Azure OpenAI endpoint URL (e.g., `https://your-resource.openai.azure.com/`, this setting takes precedence over environment variable `AZURE_OPENAI_ENDPOINT`)
+* `docTranslate.azureOpenaiApiVersion`: Azure OpenAI API version (default: `2024-02-15-preview`)
+* `docTranslate.azureOpenaiDeploymentName`: Azure OpenAI deployment name (default: `gpt-4o-mini`)
 
-1. LLMプロバイダーとAPIキーを設定:
-   - VSCode設定で `docTranslate.provider` を選択（`anthropic`、`openai`、`gemini`）
-   - 選択したプロバイダーのAPIキーを設定:
-     - **Anthropic**: 環境変数 `ANTHROPIC_API_KEY` または設定 `docTranslate.anthropicApiKey`
-     - **OpenAI**: 環境変数 `OPENAI_API_KEY` または設定 `docTranslate.openaiApiKey`
-     - **Gemini**: 環境変数 `GEMINI_API_KEY` または設定 `docTranslate.geminiApiKey`
+## Usage
 
-2. 翻訳先言語を設定（オプション）:
-   - `docTranslate.targetLang`: 翻訳先の言語（デフォルト: `ja`）
-   - 翻訳元言語は自動検出されます（francライブラリ使用）
-   - 同じ言語の場合は自動的にスキップされます
-   - 対応言語: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru` など
+1. Configure LLM provider and API key:
+   - Select `docTranslate.provider` in VSCode settings (`anthropic`, `openai`, `gemini`, or `azure-openai`)
+   - Set the API key for your chosen provider:
+     - **Anthropic**: Setting `docTranslate.anthropicApiKey` or environment variable `ANTHROPIC_API_KEY`
+     - **OpenAI**: Setting `docTranslate.openaiApiKey` or environment variable `OPENAI_API_KEY`
+     - **Gemini**: Setting `docTranslate.geminiApiKey` or environment variable `GEMINI_API_KEY`
+     - **Azure OpenAI**: Settings `docTranslate.azureOpenaiApiKey` and `docTranslate.azureOpenaiEndpoint` or environment variables `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT`
 
-3. サポートされている言語のファイルを開く（Python、JavaScript、TypeScript、Go）
-   - 拡張機能が自動的にバックグラウンドですべてのdocstringとコメントを翻訳開始
-   - ステータスバーで進捗を確認: `$(sync~spin) Translating X/Y blocks...`
-   - 完了時: `$(check) Translated X blocks`
+2. Set target language (optional):
+   - `docTranslate.targetLang`: Target language (default: `ja`)
+   - Source language is automatically detected (using franc library)
+   - Automatically skipped if same language
+   - Supported languages: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`, etc.
 
-4. 翻訳を確認
-   - **コメント**: 各行の右側に翻訳が表示されます
+3. Open a file in a supported language (Python, JavaScript, TypeScript, Go)
+   - Extension automatically starts translating all docstrings and comments in the background
+   - Check progress in status bar: `$(sync~spin) Translating X/Y blocks...`
+   - On completion: `$(check) Translated X blocks`
+
+4. View translations
+   - **Comments**: Translation appears to the right of each line
      - Python: `# This is a comment → これはコメントです`
      - JavaScript/TypeScript/Go: `// This is a comment → これはコメントです`
-   - **Docstring/JSDoc**: 元のテキストが隠され、翻訳が上書き表示されます
-   - ホバー不要、常に見える状態
-   - 元のコードは一切変更されません（見た目のみ）
+   - **Docstrings/JSDoc**: Original text is hidden, translation overlaid
+   - No hover required - always visible
+   - Original code is never modified (visual only)
 
-5. ファイルを編集・保存
-   - ファイルを保存すると自動的に再翻訳されます
-   - キャッシュを活用するので、変更されていない部分は高速に処理
+5. Edit and save files
+   - File is automatically re-translated on save
+   - Cache leveraged for fast processing of unchanged parts
 
-## テスト用サンプルファイル
+## Sample Files for Testing
 
-拡張機能の動作を確認するためのサンプルファイルが `src/test/assets/` に用意されています：
+Sample files are provided in `src/test/assets/` to test the extension:
 
-- **`sample.py`**: Pythonのサンプルコード（docstring、インラインコメント）
-- **`sample.ts`**: TypeScriptのサンプルコード（JSDoc、複数行コメント、単一行コメント）
-- **`sample.js`**: JavaScriptのサンプルコード（JSDoc、複数行コメント、単一行コメント）
-- **`sample.go`**: Goのサンプルコード（godoc、package doc、複数行/単一行コメント）
+- **`sample.py`**: Python sample code (docstrings, inline comments)
+- **`sample.ts`**: TypeScript sample code (JSDoc, multi-line comments, single-line comments)
+- **`sample.js`**: JavaScript sample code (JSDoc, multi-line comments, single-line comments)
+- **`sample.go`**: Go sample code (godoc, package doc, multi-line/single-line comments)
 
-これらのファイルを開くと、拡張機能が自動的にコメントとdocstringを翻訳し、インライン表示します。
-テストコードからも参照可能なアセットとして配置されています。
+Opening these files will automatically translate and display comments and docstrings inline.
+These files are also referenced by test code as assets.
 
-## コマンド
+## Commands
 
-* `Doc Translate: Clear Translation Cache`: 翻訳キャッシュと事前翻訳キャッシュをクリア（次回ファイルを開いたときに再翻訳）
-* `Doc Translate: Show Logs`: 詳細ログを表示する出力チャンネルを開く
+* `Doc Translate: Clear Translation Cache`: Clear translation cache and pre-translation cache (re-translate on next file open)
+* `Doc Translate: Show Logs`: Open output channel with detailed logs
 
-## デバッグ
+## Debugging
 
-詳細ログを表示するには：
+To view detailed logs:
 
-1. コマンドパレットを開く（`Cmd+Shift+P` または `Ctrl+Shift+P`）
-2. `Doc Translate: Show Logs` を実行
-3. "Doc Translate" 出力チャンネルに以下の詳細ログが表示されます：
-   - 拡張機能の起動状態
-   - APIキーの検出
-   - 事前翻訳の進捗（ファイルを開いたとき）
-   - LSPシンボルのクエリと結果
-   - LSPによるdocstring検出
-   - 翻訳リクエストとレスポンス
-   - キャッシュヒット/ミス
-   - エラー詳細
+1. Open command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
+2. Run `Doc Translate: Show Logs`
+3. The "Doc Translate" output channel will show detailed logs including:
+   - Extension activation state
+   - API key detection
+   - Pre-translation progress (when opening files)
+   - LSP symbol queries and results
+   - LSP docstring detection
+   - Translation requests and responses
+   - Cache hits/misses
+   - Error details
 
-または、出力パネルを手動で開くこともできます：
-- 表示 → 出力 → ドロップダウンから "Doc Translate" を選択
+Or manually open the output panel:
+- View → Output → Select "Doc Translate" from dropdown
 
-## 既知の問題
+## Known Issues
 
-現時点ではありません。
+None at this time.
 
-## リリースノート
+## Release Notes
 
-詳細な変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。
+See [CHANGELOG.md](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/CHANGELOG.md) for detailed change history.
+
+## Installation
+
+### VS Code Marketplace
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=m-cube.doc-translate)
+
+### Open VSX Registry
+Install from the [Open VSX Registry](https://open-vsx.org/extension/m-cube/doc-translate)
+
+## License
+
+See LICENSE file.
