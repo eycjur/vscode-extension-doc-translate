@@ -59,24 +59,21 @@ export abstract class BaseProvider {
   ): Promise<string>;
 
   /**
-   * Preprocess batch response text before JSON parsing
-   * Override this in child classes if special preprocessing is needed (e.g., removing markdown code blocks)
-   */
-  protected preprocessBatchResponse(responseText: string): string {
-    return responseText;
-  }
-
-  /**
    * Parse batch translation response JSON
    * Handles various JSON formats: [...], {"translations": [...]}, or any object with an array property
+   * Also removes markdown code blocks if present
    */
   protected parseBatchResponse(responseText: string): string[] {
     try {
-      // Apply provider-specific preprocessing
-      const preprocessed = this.preprocessBatchResponse(responseText);
+      // Remove markdown code blocks if present (e.g., ```json\n...\n``` or ```\n...\n```)
+      // This doesn't harm responses that don't use code blocks
+      const jsonMatch =
+        responseText.match(/```json\n([\s\S]*?)\n```/) ||
+        responseText.match(/```\n([\s\S]*?)\n```/);
+      const cleanedText = jsonMatch ? jsonMatch[1] : responseText;
 
       // Parse JSON response
-      const parsed = JSON.parse(preprocessed);
+      const parsed = JSON.parse(cleanedText);
       let result: string[] = [];
 
       if (Array.isArray(parsed)) {

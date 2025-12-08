@@ -116,16 +116,6 @@ export class GeminiProvider extends BaseProvider {
     return content.trim();
   }
 
-  /**
-   * Gemini-specific preprocessing: extract JSON from markdown code blocks
-   */
-  protected preprocessBatchResponse(responseText: string): string {
-    const jsonMatch =
-      responseText.match(/```json\n([\s\S]*?)\n```/) ||
-      responseText.match(/```\n([\s\S]*?)\n```/);
-    return jsonMatch ? jsonMatch[1] : responseText;
-  }
-
   updateConfiguration(): void {
     logger.info('Configuration changed, re-initializing Gemini client');
     this.initializeClient();
