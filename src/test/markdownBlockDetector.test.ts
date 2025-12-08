@@ -141,8 +141,11 @@ suite('MarkdownBlockDetector Test Suite', () => {
     // Verify we extracted meaningful blocks
     assert.ok(blocks.length > 0, 'Should extract at least some blocks');
 
-    // Check that we extracted headers
-    const headerBlocks = blocks.filter(b => b.text.startsWith('User Guide') || b.text.startsWith('Installation'));
+    // Check that we extracted headers (with # markers)
+    const headerBlocks = blocks.filter(b =>
+      b.text.startsWith('# User Guide') ||
+      b.text.startsWith('## Installation')
+    );
     assert.ok(headerBlocks.length > 0, 'Should extract header blocks');
 
     // Check that we extracted paragraphs
