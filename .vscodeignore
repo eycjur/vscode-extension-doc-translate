@@ -40,13 +40,30 @@ coverage/**
 .mypy_cache/**
 .serena/**
 .claude/**
+
+# Node modules optimization (exclude unnecessary files)
 node_modules/**/test/**
+node_modules/**/tests/**
 node_modules/**/*.md
 node_modules/**/*.txt
 node_modules/**/LICENSE*
+node_modules/**/LICENCE*
+node_modules/**/CHANGELOG*
+node_modules/**/HISTORY*
 node_modules/**/.github/**
 node_modules/**/examples/**
+node_modules/**/example/**
 node_modules/**/docs/**
+node_modules/**/doc/**
+node_modules/**/*.map
+node_modules/**/*.ts
+node_modules/**/tsconfig.json
+node_modules/**/.npmignore
+node_modules/**/.eslintrc*
+node_modules/**/.prettierrc*
+node_modules/**/Makefile
+node_modules/**/*.yml
+node_modules/**/*.yaml
 
 # Keep these files
 !README.md

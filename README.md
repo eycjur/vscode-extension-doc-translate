@@ -19,12 +19,15 @@ Translate code docstrings and comments using multiple LLMs (Claude, OpenAI, Gemi
 - **Error Handling**: Non-intrusive notifications with retry options
 - **Configurable**: Environment variables and VSCode settings support
 
-## Documentation
+## Installation
 
-- [Architecture](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/ARCHITECTURE.md) - System architecture details
-- [Contributing Guide](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/CONTRIBUTING.md) - Developer guide
+### VS Code Marketplace
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=m-cube.doc-translate)
 
-## Requirements
+### Open VSX Registry
+Install from the [Open VSX Registry](https://open-vsx.org/extension/m-cube/doc-translate)
+
+### Requirements
 
 - **LLM API Key**: You need an API key for at least one of the following LLM providers:
   - **Anthropic Claude**: `ANTHROPIC_API_KEY` environment variable or `docTranslate.anthropicApiKey` setting
@@ -35,6 +38,39 @@ Translate code docstrings and comments using multiple LLMs (Claude, OpenAI, Gemi
   - **Python**: Python extension (with Pylance)
   - **JavaScript/TypeScript**: Usually built into VSCode
   - **Go**: Go extension
+
+## Quick Start (Usage)
+
+1. Configure LLM provider and API key:
+   - Select `docTranslate.provider` in VSCode settings (`anthropic`, `openai`, `gemini`, or `azure-openai`)
+   - Set the API key for your chosen provider:
+     - **Anthropic**: Setting `docTranslate.anthropicApiKey` or environment variable `ANTHROPIC_API_KEY`
+     - **OpenAI**: Setting `docTranslate.openaiApiKey` or environment variable `OPENAI_API_KEY`
+     - **Gemini**: Setting `docTranslate.geminiApiKey` or environment variable `GEMINI_API_KEY`
+     - **Azure OpenAI**: Settings `docTranslate.azureOpenaiApiKey` and `docTranslate.azureOpenaiEndpoint` or environment variables `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT`
+
+2. Set target language (optional):
+   - `docTranslate.targetLang`: Target language (default: `ja`)
+   - Source language is automatically detected (using franc library)
+   - Automatically skipped if same language
+   - Supported languages: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`, etc.
+
+3. Open a file in a supported language (Python, JavaScript, TypeScript, Go)
+   - Extension automatically starts translating all docstrings and comments in the background
+   - Check progress in status bar: `$(sync~spin) Translating X/Y blocks...`
+   - On completion: `$(check) Translated X blocks`
+
+4. View translations
+   - **Comments**: Translation appears to the right of each line
+     - Python: `# This is a comment → これはコメントです`
+     - JavaScript/TypeScript/Go: `// This is a comment → これはコメントです`
+   - **Docstrings/JSDoc**: Original text is hidden, translation overlaid
+   - No hover required - always visible
+   - Original code is never modified (visual only)
+
+5. Edit and save files
+   - File is automatically re-translated on save
+   - Cache leveraged for fast processing of unchanged parts
 
 ## Extension Settings
 
@@ -68,55 +104,19 @@ This extension contributes the following settings:
 * `docTranslate.azureOpenaiApiVersion`: Azure OpenAI API version (default: `2024-02-15-preview`)
 * `docTranslate.azureOpenaiDeploymentName`: Azure OpenAI deployment name (default: `gpt-4o-mini`)
 
-## Usage
-
-1. Configure LLM provider and API key:
-   - Select `docTranslate.provider` in VSCode settings (`anthropic`, `openai`, `gemini`, or `azure-openai`)
-   - Set the API key for your chosen provider:
-     - **Anthropic**: Setting `docTranslate.anthropicApiKey` or environment variable `ANTHROPIC_API_KEY`
-     - **OpenAI**: Setting `docTranslate.openaiApiKey` or environment variable `OPENAI_API_KEY`
-     - **Gemini**: Setting `docTranslate.geminiApiKey` or environment variable `GEMINI_API_KEY`
-     - **Azure OpenAI**: Settings `docTranslate.azureOpenaiApiKey` and `docTranslate.azureOpenaiEndpoint` or environment variables `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT`
-
-2. Set target language (optional):
-   - `docTranslate.targetLang`: Target language (default: `ja`)
-   - Source language is automatically detected (using franc library)
-   - Automatically skipped if same language
-   - Supported languages: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`, etc.
-
-3. Open a file in a supported language (Python, JavaScript, TypeScript, Go)
-   - Extension automatically starts translating all docstrings and comments in the background
-   - Check progress in status bar: `$(sync~spin) Translating X/Y blocks...`
-   - On completion: `$(check) Translated X blocks`
-
-4. View translations
-   - **Comments**: Translation appears to the right of each line
-     - Python: `# This is a comment → これはコメントです`
-     - JavaScript/TypeScript/Go: `// This is a comment → これはコメントです`
-   - **Docstrings/JSDoc**: Original text is hidden, translation overlaid
-   - No hover required - always visible
-   - Original code is never modified (visual only)
-
-5. Edit and save files
-   - File is automatically re-translated on save
-   - Cache leveraged for fast processing of unchanged parts
-
-## Sample Files for Testing
-
-Sample files are provided in `src/test/assets/` to test the extension:
-
-- **`sample.py`**: Python sample code (docstrings, inline comments)
-- **`sample.ts`**: TypeScript sample code (JSDoc, multi-line comments, single-line comments)
-- **`sample.js`**: JavaScript sample code (JSDoc, multi-line comments, single-line comments)
-- **`sample.go`**: Go sample code (godoc, package doc, multi-line/single-line comments)
-
-Opening these files will automatically translate and display comments and docstrings inline.
-These files are also referenced by test code as assets.
-
 ## Commands
 
 * `Doc Translate: Clear Translation Cache`: Clear translation cache and pre-translation cache (re-translate on next file open)
 * `Doc Translate: Show Logs`: Open output channel with detailed logs
+
+## Documentation
+
+- [Architecture](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/ARCHITECTURE.md) - System architecture details
+- [Contributing Guide](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/CONTRIBUTING.md) - Developer guide
+
+## Release Notes
+
+See [CHANGELOG.md](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/CHANGELOG.md) for detailed change history.
 
 ## Debugging
 
@@ -137,22 +137,14 @@ To view detailed logs:
 Or manually open the output panel:
 - View → Output → Select "Doc Translate" from dropdown
 
-## Known Issues
+## Sample Files for Testing
 
-None at this time.
+Sample files are provided in `src/test/assets/` to test the extension:
 
-## Release Notes
+- **`sample.py`**: Python sample code (docstrings, inline comments)
+- **`sample.ts`**: TypeScript sample code (JSDoc, multi-line comments, single-line comments)
+- **`sample.js`**: JavaScript sample code (JSDoc, multi-line comments, single-line comments)
+- **`sample.go`**: Go sample code (godoc, package doc, multi-line/single-line comments)
 
-See [CHANGELOG.md](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/CHANGELOG.md) for detailed change history.
-
-## Installation
-
-### VS Code Marketplace
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=m-cube.doc-translate)
-
-### Open VSX Registry
-Install from the [Open VSX Registry](https://open-vsx.org/extension/m-cube/doc-translate)
-
-## License
-
-See LICENSE file.
+Opening these files will automatically translate and display comments and docstrings inline.
+These files are also referenced by test code as assets.

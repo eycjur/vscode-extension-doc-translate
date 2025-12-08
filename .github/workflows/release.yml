@@ -53,6 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-version
     if: needs.check-version.outputs.should_release == 'true'
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout code
@@ -87,15 +89,15 @@ jobs:
       run: vsce package
 
     - name: Publish to VS Code Marketplace
+      id: vsce-publish
       run: vsce publish -p ${{ secrets.VSCE_PAT }}
-      continue-on-error: true
 
     - name: Publish to Open VSX Registry
       run: ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
       continue-on-error: true
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ needs.check-version.outputs.version }}
         name: Release v${{ needs.check-version.outputs.version }}
@@ -108,6 +110,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload VSIX as artifact
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: vscode-extension-v${{ needs.check-version.outputs.version }}
