@@ -1,11 +1,54 @@
+# VS Code files
 .vscode/**
 .vscode-test/**
+**/.vscode-test.*
+
+# Source files (we only need compiled .js)
 src/**
+**/*.ts
+**/*.map
+
+# Test files and assets
+**/test/**
+**/*.test.js
+**/*.test.ts
+out/test/**
+
+# Build and config files
+tsconfig.json
+**/tsconfig.json
+eslint.config.mjs
+**/eslint.config.mjs
 .gitignore
 .yarnrc
+.prettierrc
+.editorconfig
+
+# CI/CD
+.github/**
+
+# Documentation (keep only essential)
+docs/**
 vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
-**/*.map
-**/*.ts
-**/.vscode-test.*
+CONTRIBUTING.md
+CLAUDE.md
+
+# Development
+coverage/**
+*.log
+.DS_Store
+.mypy_cache/**
+.serena/**
+.claude/**
+node_modules/**/test/**
+node_modules/**/*.md
+node_modules/**/*.txt
+node_modules/**/LICENSE*
+node_modules/**/.github/**
+node_modules/**/examples/**
+node_modules/**/docs/**
+
+# Keep these files
+!README.md
+!CHANGELOG.md
+!LICENSE
