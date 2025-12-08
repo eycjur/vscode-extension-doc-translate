@@ -2,49 +2,25 @@
 
 [![CI](https://github.com/eycjur/vscode-extension-doc-translate/actions/workflows/ci.yml/badge.svg)](https://github.com/eycjur/vscode-extension-doc-translate/actions/workflows/ci.yml)
 
-使用多种 LLM（Claude, OpenAI, Gemini）翻译代码文档字符串和注释的 VSCode 扩展（支持 Python, JS, TS, Go）。
+使用多种 LLM（Claude, OpenAI, Gemini, Azure OpenAI）翻译代码文档字符串和注释的 VSCode 扩展。
 
-[日本語 README](./README.md)
+**[English README](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/README.md)** | **[日本語 README](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/README.ja.md)**
 
 ## 功能
 
-- **支持多种 LLM 提供商**: 可选择 Anthropic Claude、OpenAI、Google Gemini
-- **支持多种编程语言**: 支持 Python、JavaScript、TypeScript、Go
-- **自动语言检测**: 自动检测注释语言，如果是相同语言则跳过翻译
-- **多语言翻译支持**: 支持翻译到 10 种以上的目标语言
-- **内联翻译显示**: 打开文件时，文档字符串和注释的翻译将常驻显示在代码中
-  - **注释**（`#`）: 在每行右侧显示翻译（例如：`# comment → 注释`）
-  - **文档字符串**（`"""`/`'''`）: 隐藏原文并覆盖显示翻译
-  - **光标/选择时显示原文**: 当光标位于文档字符串上或选中时，翻译自动隐藏，显示原文
-  - 无需悬停，始终显示
-  - 以灰色斜体显示，不干扰阅读
-  - 文件内容不被修改（仅视觉上的更改）
-- **打开文件即自动翻译**: 打开 Python 文件时，后台自动翻译所有文档字符串和注释
-  - 状态栏显示进度
-  - 智能缓存: 每个文件仅翻译一次
-  - 文件保存时自动重新翻译（利用缓存）
-  - **并行翻译**: 最多同时执行 5 个请求（防止速率限制）
-- **LSP 驱动的检测**: 使用 VSCode 的语言服务器协议 (Pylance) 进行精确的文档字符串检测
-- **翻译对象**:
-  - 模块文档字符串（文件开头的文档字符串）
-  - 类、函数、方法的文档字符串（`"""` 和 `'''`）
-  - 内联注释（`#`）
-- **持久化缓存**: 翻译结果保存到磁盘，最小化 API 调用
-  - 重启扩展后翻译结果依然保留
-  - 保存到 VSCode 的 globalState
-- **进度指示器**: 翻译过程中状态栏显示进度
-- **错误处理**: 翻译失败时通知目标文件和失败块数，提供重试和查看日志的操作
-- **详细日志**: 记录 LSP 查询、API 请求/响应、调试信息
-- **错误通知**: 非侵入式错误通知系统
-  - **严重错误**: 对话框显示（如未设置 API 密钥）
-  - **错误**: 状态栏显示（超时、翻译失败等）
-  - 防止刷屏（相同错误 60 秒内仅显示一次）
+- **支持多种 LLM 提供商**: Anthropic Claude、OpenAI、Google Gemini、Azure OpenAI
+- **支持多种编程语言**: Python、JavaScript、TypeScript、Go、Markdown
+- **内联翻译显示**: 直接在代码中显示翻译（注释在右侧，文档字符串为覆盖层）
+- **自动翻译**: 文件打开/保存时使用智能缓存和批处理自动翻译
+- **语言检测**: 如果文本已经是目标语言则自动跳过
+- **持久化缓存**: 跨会话保存翻译以最小化 API 调用
+- **错误处理**: 非侵入式通知和重试选项
 - **可配置**: 支持环境变量和 VSCode 设置
 
 ## 文档
 
-- [架构](docs/ARCHITECTURE.md) - 系统架构详情
-- [开发指南](docs/CONTRIBUTING.md) - 开发者指南
+- [架构](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/ARCHITECTURE.md) - 系统架构详情
+- [开发指南](https://github.com/eycjur/vscode-extension-doc-translate/blob/main/docs/CONTRIBUTING.md) - 开发者指南
 
 ## 必要条件
 

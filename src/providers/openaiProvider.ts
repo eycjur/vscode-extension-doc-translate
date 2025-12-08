@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
-import { ITranslationProvider } from './base/translationProvider';
 import { BaseProvider } from './base/baseProvider';
 import { withRetry } from '../utils/retryHelper';
 import { ConfigManager } from '../utils/config';
@@ -14,18 +13,15 @@ interface OpenAIClient {
   };
 }
 
-export class OpenAIProvider
-  extends BaseProvider
-  implements ITranslationProvider
-{
-  private client: OpenAIClient | null = null;
+export class OpenAIProvider extends BaseProvider {
+  protected client: OpenAIClient | null = null;
 
   constructor() {
     super();
     this.initializeClient();
   }
 
-  private async initializeClient(): Promise<void> {
+  protected async initializeClient(): Promise<void> {
     const apiKey = ConfigManager.getOpenAIApiKey();
     if (apiKey) {
       try {
@@ -44,15 +40,26 @@ export class OpenAIProvider
     }
   }
 
-  async translate(text: string, targetLang: string): Promise<string> {
-    logger.info(
-      `OpenAI translation request received (text length: ${text.length} chars, target: ${targetLang})`
-    );
-    logger.debug('Text to translate:', {
-      text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
-    });
+  protected getProviderName(): string {
+    return 'OpenAI';
+  }
 
-    // Check if translation is needed (skip if already in target language)
+  protected getModel(): string {
+    return ConfigManager.getOpenAIModel();
+  }
+
+  protected getApiKeyMissingError(): string {
+    return vscode.l10n.t('error.openai.apiKeyMissing');
+  }
+
+  protected getSettingsKey(): string {
+    return 'docTranslate.openaiApiKey';
+  }
+
+  async translate(text: string, targetLang: string): Promise<string> {
+    const providerName = this.getProviderName();
+    this.logTranslationStart(providerName, text, targetLang);
+
     const skipResult = await this.checkTranslationNeeded(text, targetLang);
     if (skipResult !== null) {
       return skipResult;
@@ -62,14 +69,14 @@ export class OpenAIProvider
       logger.info('Client not initialized, attempting re-initialization');
       await this.initializeClient();
       if (!this.client) {
-        const errorMsg = vscode.l10n.t('error.openai.apiKeyMissing');
+        const errorMsg = this.getApiKeyMissingError();
         logger.notifyCriticalError(errorMsg, undefined, [
           {
             label: vscode.l10n.t('action.openSettings'),
             callback: () =>
               vscode.commands.executeCommand(
                 'workbench.action.openSettings',
-                'docTranslate.openaiApiKey'
+                this.getSettingsKey()
               )
           }
         ]);
@@ -78,16 +85,12 @@ export class OpenAIProvider
     }
 
     const prompt = this.buildPrompt(text, targetLang);
-    const model = ConfigManager.getOpenAIModel();
+    const model = this.getModel();
     const timeout = ConfigManager.getTimeout();
     const retryConfig = ConfigManager.getRetryConfig();
 
     logger.debug(`Using model: ${model}, timeout: ${timeout}ms`);
-    logger.info('='.repeat(60));
-    logger.info('OPENAI REQUEST PROMPT:');
-    logger.info('-'.repeat(60));
-    logger.info(prompt);
-    logger.info('='.repeat(60));
+    this.logPrompt(providerName, prompt);
 
     try {
       const translation = await withRetry(
@@ -133,39 +136,23 @@ export class OpenAIProvider
           }
 
           const translatedText = content.trim();
-          logger.info('Translation successful');
-          logger.info('='.repeat(60));
-          logger.info('OPENAI RESPONSE:');
-          logger.info('-'.repeat(60));
-          logger.info(translatedText);
-          logger.info('='.repeat(60));
+          this.logTranslationSuccess(providerName, translatedText);
 
           return translatedText;
         },
         retryConfig,
-        'OpenAI translation'
+        `${providerName} translation`
       );
 
       return translation;
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        const errorMsg = vscode.l10n.t('error.translation.timeout', timeout);
-        logger.notifyError(errorMsg);
-        throw new Error(errorMsg);
-      }
-      const errorMsg = vscode.l10n.t(
-        'error.translation.failed',
-        error.message || 'Unknown error'
-      );
-      logger.notifyError(errorMsg, error);
-      throw new Error(`OpenAI translation failed: ${error.message}`);
+      this.handleTranslationError(providerName, error, timeout);
     }
   }
 
   async translateBatch(texts: string[], targetLang: string): Promise<string[]> {
-    logger.info(
-      `OpenAI batch translation request received (texts count: ${texts.length}, target: ${targetLang})`
-    );
+    const providerName = this.getProviderName();
+    this.logBatchTranslationStart(providerName, texts.length, targetLang);
     logger.debug('Texts to translate:', {
       texts: texts.map((t) => t.substring(0, 50) + (t.length > 50 ? '...' : ''))
     });
@@ -176,14 +163,14 @@ export class OpenAIProvider
       );
       await this.initializeClient();
       if (!this.client) {
-        const errorMsg = vscode.l10n.t('error.openai.apiKeyMissing');
+        const errorMsg = this.getApiKeyMissingError();
         logger.notifyCriticalError(errorMsg, undefined, [
           {
             label: vscode.l10n.t('action.openSettings'),
             callback: () =>
               vscode.commands.executeCommand(
                 'workbench.action.openSettings',
-                'docTranslate.openaiApiKey'
+                this.getSettingsKey()
               )
           }
         ]);
@@ -196,16 +183,12 @@ export class OpenAIProvider
     }
 
     const prompt = this.buildBatchPrompt(texts, targetLang);
-    const model = ConfigManager.getOpenAIModel();
+    const model = this.getModel();
     const timeout = ConfigManager.getTimeout();
     const retryConfig = ConfigManager.getRetryConfig();
 
     logger.debug(`Using model: ${model}, timeout: ${timeout}ms for batch`);
-    logger.info('='.repeat(60));
-    logger.info('OPENAI BATCH REQUEST PROMPT:');
-    logger.info('-'.repeat(60));
-    logger.info(prompt);
-    logger.info('='.repeat(60));
+    this.logBatchPrompt(providerName, prompt);
 
     try {
       const translations = await withRetry(
@@ -213,7 +196,7 @@ export class OpenAIProvider
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-          logger.info('Sending batch request to OpenAI API...');
+          logger.info(`Sending batch request to ${providerName} API...`);
           const startTime = Date.now();
 
           const response = await this.client!.chat.completions.create(
@@ -240,7 +223,7 @@ export class OpenAIProvider
 
           clearTimeout(timeoutId);
           const duration = Date.now() - startTime;
-          logger.info(`OpenAI API batch response received (${duration}ms)`);
+          logger.info(`${providerName} API batch response received (${duration}ms)`);
 
           if (!response.choices || response.choices.length === 0) {
             throw new Error(vscode.l10n.t('error.openai.emptyResponse'));
@@ -280,22 +263,17 @@ export class OpenAIProvider
 
             if (result.length !== texts.length) {
               logger.warn(
-                `OpenAI batch response count mismatch. Expected ${texts.length}, got ${result.length}. Falling back to sequential translation.`
+                `${providerName} batch response count mismatch. Expected ${texts.length}, got ${result.length}. Falling back to sequential translation.`
               );
               throw new Error('Batch response count mismatch'); // Trigger retry or fallback
             }
 
-            logger.info('Batch translation successful');
-            logger.info('='.repeat(60));
-            logger.info('OPENAI BATCH RESPONSE:');
-            logger.info('-'.repeat(60));
-            logger.info(JSON.stringify(result, null, 2));
-            logger.info('='.repeat(60));
+            this.logBatchTranslationSuccess(providerName, result);
 
             return result;
           } catch (e) {
             logger.error(
-              'Failed to parse OpenAI batch response or response format invalid:',
+              `Failed to parse ${providerName} batch response or response format invalid:`,
               e
             );
             throw new Error(
@@ -306,7 +284,7 @@ export class OpenAIProvider
           }
         },
         retryConfig,
-        'OpenAI batch translation'
+        `${providerName} batch translation`
       );
 
       return translations;
@@ -316,7 +294,7 @@ export class OpenAIProvider
         logger.notifyError(errorMsg);
         // Fallback to sequential translation on timeout
         logger.warn(
-          'OpenAI batch translation timed out, falling back to sequential translation.'
+          `${providerName} batch translation timed out, falling back to sequential translation.`
         );
         return super.translateBatch(texts, targetLang);
       }
@@ -326,7 +304,7 @@ export class OpenAIProvider
       );
       logger.notifyError(errorMsg, error);
       logger.warn(
-        'OpenAI batch translation failed, falling back to sequential translation.'
+        `${providerName} batch translation failed, falling back to sequential translation.`
       );
       // Fallback to sequential translation on other errors
       return super.translateBatch(texts, targetLang);
@@ -334,7 +312,7 @@ export class OpenAIProvider
   }
 
   updateConfiguration(): void {
-    logger.info('Configuration changed, re-initializing OpenAI client');
+    logger.info(`Configuration changed, re-initializing ${this.getProviderName()} client`);
     this.initializeClient();
   }
 }

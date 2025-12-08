@@ -1,15 +1,11 @@
 import * as vscode from 'vscode';
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../utils/logger';
-import { ITranslationProvider } from './base/translationProvider';
 import { BaseProvider } from './base/baseProvider';
 import { withRetry } from '../utils/retryHelper';
 import { ConfigManager } from '../utils/config';
 
-export class AnthropicProvider
-  extends BaseProvider
-  implements ITranslationProvider
-{
+export class AnthropicProvider extends BaseProvider {
   private client: Anthropic | null = null;
 
   constructor() {
@@ -28,14 +24,8 @@ export class AnthropicProvider
   }
 
   async translate(text: string, targetLang: string): Promise<string> {
-    logger.info(
-      `Anthropic translation request received (text length: ${text.length} chars, target: ${targetLang})`
-    );
-    logger.debug('Text to translate:', {
-      text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
-    });
+    this.logTranslationStart('Anthropic', text, targetLang);
 
-    // Check if translation is needed (skip if already in target language)
     const skipResult = await this.checkTranslationNeeded(text, targetLang);
     if (skipResult !== null) {
       return skipResult;
@@ -66,11 +56,7 @@ export class AnthropicProvider
     const retryConfig = ConfigManager.getRetryConfig();
 
     logger.debug(`Using model: ${model}, timeout: ${timeout}ms`);
-    logger.info('='.repeat(60));
-    logger.info('ANTHROPIC REQUEST PROMPT:');
-    logger.info('-'.repeat(60));
-    logger.info(prompt);
-    logger.info('='.repeat(60));
+    this.logPrompt('Anthropic', prompt);
 
     try {
       const translation = await withRetry(
@@ -111,12 +97,7 @@ export class AnthropicProvider
           }
 
           const translatedText = content.text.trim();
-          logger.info('Translation successful');
-          logger.info('='.repeat(60));
-          logger.info('ANTHROPIC RESPONSE:');
-          logger.info('-'.repeat(60));
-          logger.info(translatedText);
-          logger.info('='.repeat(60));
+          this.logTranslationSuccess('Anthropic', translatedText);
 
           return translatedText;
         },
@@ -126,17 +107,7 @@ export class AnthropicProvider
 
       return translation;
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        const errorMsg = vscode.l10n.t('error.translation.timeout', timeout);
-        logger.notifyError(errorMsg);
-        throw new Error(errorMsg);
-      }
-      const errorMsg = vscode.l10n.t(
-        'error.translation.failed',
-        error.message || 'Unknown error'
-      );
-      logger.notifyError(errorMsg, error);
-      throw new Error(`Anthropic translation failed: ${error.message}`);
+      this.handleTranslationError('Anthropic', error, timeout);
     }
   }
 

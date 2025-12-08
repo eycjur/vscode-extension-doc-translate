@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
-import { ITranslationProvider } from './base/translationProvider';
 import { BaseProvider } from './base/baseProvider';
 import { withRetry } from '../utils/retryHelper';
 import { ConfigManager } from '../utils/config';
@@ -14,10 +13,7 @@ interface GoogleGenerativeAI {
   getGenerativeModel(params: { model: string }): GenerativeModel;
 }
 
-export class GeminiProvider
-  extends BaseProvider
-  implements ITranslationProvider
-{
+export class GeminiProvider extends BaseProvider {
   private client: GoogleGenerativeAI | null = null;
   private model: GenerativeModel | null = null;
 
@@ -47,14 +43,8 @@ export class GeminiProvider
   }
 
   async translate(text: string, targetLang: string): Promise<string> {
-    logger.info(
-      `Gemini translation request received (text length: ${text.length} chars, target: ${targetLang})`
-    );
-    logger.debug('Text to translate:', {
-      text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
-    });
+    this.logTranslationStart('Gemini', text, targetLang);
 
-    // Check if translation is needed (skip if already in target language)
     const skipResult = await this.checkTranslationNeeded(text, targetLang);
     if (skipResult !== null) {
       return skipResult;
@@ -86,11 +76,7 @@ export class GeminiProvider
     logger.debug(
       `Using model: ${ConfigManager.getGeminiModel()}, timeout: ${timeout}ms`
     );
-    logger.info('='.repeat(60));
-    logger.info('GEMINI REQUEST PROMPT:');
-    logger.info('-'.repeat(60));
-    logger.info(prompt);
-    logger.info('='.repeat(60));
+    this.logPrompt('Gemini', prompt);
 
     try {
       const translation = await withRetry(
@@ -122,12 +108,7 @@ export class GeminiProvider
           }
 
           const translatedText = text.trim();
-          logger.info('Translation successful');
-          logger.info('='.repeat(60));
-          logger.info('GEMINI RESPONSE:');
-          logger.info('-'.repeat(60));
-          logger.info(translatedText);
-          logger.info('='.repeat(60));
+          this.logTranslationSuccess('Gemini', translatedText);
 
           return translatedText;
         },
@@ -137,24 +118,12 @@ export class GeminiProvider
 
       return translation;
     } catch (error: any) {
-      if (error.message === 'timeout') {
-        const errorMsg = vscode.l10n.t('error.translation.timeout', timeout);
-        logger.notifyError(errorMsg);
-        throw new Error(errorMsg);
-      }
-      const errorMsg = vscode.l10n.t(
-        'error.translation.failed',
-        error.message || 'Unknown error'
-      );
-      logger.notifyError(errorMsg, error);
-      throw new Error(`Gemini translation failed: ${error.message}`);
+      this.handleTranslationError('Gemini', error, timeout);
     }
   }
 
   async translateBatch(texts: string[], targetLang: string): Promise<string[]> {
-    logger.info(
-      `Gemini batch translation request received (count: ${texts.length}, target: ${targetLang})`
-    );
+    this.logBatchTranslationStart('Gemini', texts.length, targetLang);
     logger.debug('Texts to translate:', {
       texts: texts.map((t) => t.substring(0, 50) + (t.length > 50 ? '...' : ''))
     });
@@ -200,9 +169,6 @@ export class GeminiProvider
     const textsToTranslate = checkedTexts
       .filter((item) => item.skipResult === null)
       .map((item) => item.original);
-    const originalIndices = checkedTexts
-      .filter((item) => item.skipResult === null)
-      .map((item) => item.index);
 
     if (textsToTranslate.length === 0) {
       const results: string[] = [];
@@ -221,11 +187,7 @@ export class GeminiProvider
     logger.debug(
       `Using model: ${ConfigManager.getGeminiModel()}, timeout: ${timeout}ms for batch`
     );
-    logger.info('='.repeat(60));
-    logger.info('GEMINI BATCH REQUEST PROMPT:');
-    logger.info('-'.repeat(60));
-    logger.info(prompt);
-    logger.info('='.repeat(60));
+    this.logBatchPrompt('Gemini', prompt);
 
     try {
       const batchTranslation = await withRetry(
@@ -290,12 +252,7 @@ export class GeminiProvider
               return super.translateBatch(textsToTranslate, targetLang);
             }
 
-            logger.info('Batch translation successful');
-            logger.info('='.repeat(60));
-            logger.info('GEMINI BATCH RESPONSE:');
-            logger.info('-'.repeat(60));
-            translatedItems.forEach((item) => logger.info(item));
-            logger.info('='.repeat(60));
+            this.logBatchTranslationSuccess('Gemini', translatedItems);
 
             const finalResults: string[] = new Array(texts.length);
             let translatedIdx = 0;

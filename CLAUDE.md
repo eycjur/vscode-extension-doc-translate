@@ -4,13 +4,13 @@
 
 ## プロジェクト概要
 
-複数のLLM（Claude, OpenAI, Gemini）を使用してdocstringとコメントを翻訳するVSCode拡張機能です。Python、JavaScript、TypeScript、Goに対応し、2種類のインライン表示方式で翻訳を提供します。
+複数のLLM（Claude, OpenAI, Gemini, Azure OpenAI）を使用してdocstringとコメントを翻訳するVSCode拡張機能です。Python、JavaScript、TypeScript、Go、Markdownに対応し、2種類のインライン表示方式で翻訳を提供します。
 
 **対象ユースケース:** 新人オンボーディング、コードレビュー、生産性向上
 
 ## プロジェクトステータス
 
-v1.0.0リリース済み - プロダクションレディ。マルチLLM・マルチ言語対応、自動言語検出、エラーハンドリング、CI/CD、包括的なドキュメントを含む安定版
+v1.0.3 - プロダクションレディ。マルチLLM（Azure OpenAI含む4プロバイダー）・マルチ言語対応、自動言語検出、エラーハンドリング、自動リリースCI/CD、包括的なドキュメントを含む安定版
 
 ## アーキテクチャ
 
@@ -19,16 +19,18 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 - **UI**: 2種類のインライン翻訳表示
   - **コメント**: 行の右側に表示（Virtual Text方式）
   - **Docstring**: 元のテキストを隠して翻訳を上書き表示（Overlay方式）
-- **対象言語**: Python、JavaScript、TypeScript、Go
+- **対象言語**: Python、JavaScript、TypeScript、Go、Markdown
 - **翻訳方向**: 自動検出（francライブラリ） → 設定した言語（10言語以上対応）
 - **翻訳対象**:
   - Python: docstring（`"""`と`'''`）、インラインコメント（`#`）
   - JavaScript/TypeScript: JSDoc（`/** */`）、コメント（`//`, `/* */`）
   - Go: godoc（`/* */`）、コメント（`//`, `/* */`）
-- **翻訳エンジン**: 選択可能な3つのLLMプロバイダー
+  - Markdown: ヘッダー、段落、リスト、引用（コードブロック・HTMLコメント・画像は除外）
+- **翻訳エンジン**: 選択可能な4つのLLMプロバイダー
   - Anthropic Claude（デフォルト: Claude Haiku 4.5）
   - OpenAI（デフォルト: GPT-4o-mini）
   - Google Gemini（デフォルト: Gemini 2.0 Flash）
+  - Azure OpenAI（エンタープライズ向け、カスタムエンドポイント対応）
 - **検出方法**: LSP（Language Server Protocol）でdocstringを検出、正規表現でコメントを検出
   - Python: Pylance
   - JavaScript/TypeScript: TypeScript Language Server
@@ -41,6 +43,7 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 - 直訳ではなく「自然な」翻訳先言語に寄せる
 - 翻訳テキストのみを出力（説明不要）
 - 元のコメントと同じ言語の場合は翻訳をスキップ
+- 記号のみのテキスト（英数字・CJK文字を含まない）は翻訳をスキップ
 
 ### 主要機能
 
@@ -97,6 +100,32 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
    - スパム防止機能（同じエラーは60秒に1回のみ）
    - ログ表示へのクイックアクセス
 
+9. **バッチ翻訳**
+   - 複数のブロックをまとめて1回のAPIリクエストで翻訳（API呼び出し最適化）
+   - 各プロバイダーで`translateBatch()`メソッドを実装
+   - JSON配列形式でリクエスト・レスポンスを処理
+   - エラー時はシーケンシャル翻訳にフォールバック
+
+10. **Debounce処理**
+    - ユーザー入力停止後500ms待機してから翻訳を開始
+    - 編集中の不要な翻訳リクエストを防止
+    - パフォーマンス向上とAPI呼び出し削減
+
+11. **スマートキャッシュ（targetLang別）**
+    - キャッシュキーに`targetLang`を含めて言語別にキャッシュを分離
+    - 翻訳先言語を切り替えても正しい翻訳を取得
+    - SHA-256ハッシュベースのキー生成
+
+12. **インデント保持**
+    - 翻訳後のテキストが元のインデントを正しく保持
+    - Markdown、Python、JavaScript/TypeScript、Goで動作
+    - InlineTranslationProviderでインデント計算を実装
+
+13. **記号のみテキストのスキップ**
+    - 英数字・CJK文字（中国語・日本語・韓国語）を含まないテキストは翻訳をスキップ
+    - 無駄なAPI呼び出しを削減してコストを節約
+    - BaseProviderの`checkTranslationNeeded()`内で`isSymbolOnly()`を実行
+
 ## ファイル構成
 
 拡張機能は以下のディレクトリ構造で整理されています：
@@ -106,11 +135,11 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 
 ### `src/providers/`（翻訳プロバイダー）
 - `base/`
-  - `translationProvider.ts` - ITranslationProviderインターフェース定義
-  - `baseProvider.ts` - 共通ロジック（プロンプト構築、言語検出）
+  - `baseProvider.ts` - 抽象基底クラス（プロンプト構築、言語検出、記号チェック、translate/translateBatchの契約定義）
 - `anthropicProvider.ts` - Anthropic Claude API クライアント
 - `openaiProvider.ts` - OpenAI API クライアント
 - `geminiProvider.ts` - Google Gemini API クライアント
+- `azureOpenaiProvider.ts` - Azure OpenAI API クライアント
 - `translationProviderFactory.ts` - プロバイダー選択のファクトリー
 
 ### `src/detectors/`（ブロック検出）
@@ -120,6 +149,7 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 - `pythonBlockDetector.ts` - Python用ブロック検出（Pylance連携）
 - `javascriptBlockDetector.ts` - JavaScript/TypeScript用ブロック検出
 - `goBlockDetector.ts` - Go用ブロック検出
+- `markdownBlockDetector.ts` - Markdown用ブロック検出（ヘッダー、段落、リスト、引用）
 - `blockDetectorFactory.ts` - 検出器選択のファクトリー
 
 ### `src/services/`（コアサービス）
@@ -143,6 +173,21 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 - `ARCHITECTURE.md` - システムアーキテクチャの詳細
 - `CONTRIBUTING.md` - 開発者ガイド
 
+### `.github/workflows/`（CI/CD）
+- `ci.yml` - 継続的インテグレーション（テスト、ビルド）
+- `release.yml` - 自動リリース（VS Code Marketplace & Open VSX Registry）
+
+### 多言語化ファイル
+- `package.nls.json` - パッケージ説明の英語翻訳
+- `package.nls.ja.json` - パッケージ説明の日本語翻訳
+- `package.nls.zh-cn.json` - パッケージ説明の中国語翻訳
+- `l10n/bundle.l10n.json` - UI文字列の英語翻訳
+- `l10n/bundle.l10n.ja.json` - UI文字列の日本語翻訳
+- `l10n/bundle.l10n.zh-cn.json` - UI文字列の中国語翻訳
+- `README.md` - 英語版README
+- `README.ja.md` - 日本語版README
+- `README.zh-CN.md` - 中国語版README
+
 ## アーキテクチャ設計原則
 
 ### 1. Factory Pattern
@@ -163,7 +208,7 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 ## 設定
 
 ### 基本設定
-- `docTranslate.provider` - 使用するLLMプロバイダー（`anthropic`、`openai`、`gemini`、デフォルト: `anthropic`）
+- `docTranslate.provider` - 使用するLLMプロバイダー（`anthropic`、`openai`、`gemini`、`azure-openai`、デフォルト: `anthropic`）
 - `docTranslate.targetLang` - 翻訳先の言語コード（デフォルト: `ja`）
   - 翻訳元言語は自動検出されます
   - 対応言語: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru` など
@@ -183,6 +228,12 @@ v1.0.0リリース済み - プロダクションレディ。マルチLLM・マ�
 ### Google Gemini設定
 - `docTranslate.geminiApiKey` - Gemini APIキー（環境変数 `GEMINI_API_KEY` が優先）
 - `docTranslate.geminiModel` - 使用するGeminiモデル（デフォルト: `gemini-2.0-flash-exp`）
+
+### Azure OpenAI設定
+- `docTranslate.azureOpenaiApiKey` - Azure OpenAI APIキー（環境変数 `AZURE_OPENAI_API_KEY` が優先）
+- `docTranslate.azureOpenaiEndpoint` - Azure OpenAI エンドポイントURL（環境変数 `AZURE_OPENAI_ENDPOINT` が優先）
+- `docTranslate.azureOpenaiApiVersion` - Azure OpenAI APIバージョン（デフォルト: `2024-02-15-preview`）
+- `docTranslate.azureOpenaiDeploymentName` - Azure OpenAI デプロイメント名（デフォルト: `gpt-4o-mini`）
 
 ## 開発
 
@@ -246,4 +297,17 @@ v0.5.0でメジャーリファクタリングを実施：
 ### ドキュメント
 
 - [アーキテクチャ](docs/ARCHITECTURE.md) - システムアーキテクチャの詳細
-- [開発ガイド](docs/CONTRIBUTING.md) - 開発者向けガイド（作成予定）
+- [開発ガイド](docs/CONTRIBUTING.md) - 開発者向けガイド
+
+### リリースプロセス
+
+1. `package.json` のバージョンを更新（例: 1.0.2 → 1.0.3）
+2. `CHANGELOG.md` に変更内容を記録
+3. mainブランチにマージ
+4. GitHub Actionsが自動的に：
+   - バージョン変更を検出
+   - テストを実行
+   - VSIXをビルド
+   - VS Code Marketplaceに公開
+   - Open VSX Registryに公開
+   - GitHub Releaseを作成

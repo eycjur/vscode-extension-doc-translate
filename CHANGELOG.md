@@ -1,150 +1,198 @@
-# 変更履歴
+# Changelog
 
-"doc-translate" 拡張機能の主な変更点を記録します。
+All notable changes to the "doc-translate" extension will be documented in this file.
 
-## [Unreleased]
+## [1.1.0] - 2025-12-08
 
-### ✨ 新機能
-- **Markdown ファイル翻訳対応**: `.md` ファイルの翻訳をサポート
-  - リスト、引用などの構造を保持
-  - フロントマターの保持
-  - 複数行HTMLコメントの正しい処理
-- **バッチ翻訳**: APIリクエストを最適化し、複数のブロックをまとめて翻訳
-- **Debounce 処理**: 入力停止後 500ms 待ってから翻訳を開始（パフォーマンス向上）
-- **スマートキャッシュ**: `targetLang` ごとにキャッシュを分離し、言語切り替えに対応
+### ✨ New Features
+- **Azure OpenAI Support**: Added enterprise-grade Azure OpenAI provider
+  - Custom endpoint, API version, and deployment name configuration
+  - Environment variable support: `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT`
+- **Automated Release Workflow**: Automated marketplace publishing via GitHub Actions
+  - Automatic version detection and publishing to VS Code Marketplace & Open VSX Registry
+  - Auto-generation of GitHub Releases with VSIX artifact uploads
+- **Markdown File Translation**: Full support for `.md` file translation
+  - Preserves structure (lists, quotes, code blocks, etc.)
+  - Maintains front matter metadata
+  - Correctly handles multi-line HTML comments
+  - **Example**: Translate documentation files
+    ```markdown
+    <!-- English version -->
+    # User Guide
+    ## Installation
+    Run the following command to install...
 
-### 🔧 改善・修正
-- **インデント保持**: 翻訳後のテキストが元のインデントを正しく保持するように改善
-- **依存関係の整理**: 使用していない `p-limit` 依存を削除
+    <!-- After translation to Japanese -->
+    # ユーザーガイド
+    ## インストール
+    次のコマンドを実行してインストールします...
+    ```
+- **Batch Translation**: Optimized API requests by translating multiple blocks in a single call
+  - Reduces API costs and improves performance
+  - JSON array-based strategy for all providers
+- **Debounce Processing**: 500ms delay after user stops typing before translation starts
+  - Prevents excessive API calls during active editing
+- **Smart Cache**: Separate cache per `targetLang` for seamless language switching
+  - Enables quick switching between translation targets without re-translation
+
+### 🔧 Improvements & Fixes
+- **Provider Architecture Refactoring**: Major code structure improvements
+  - **Azure OpenAI Inheritance**: AzureOpenAIProvider now extends OpenAIProvider instead of BaseProvider
+    - Reduced from 155 lines to 47 lines (108 lines eliminated, -70% code)
+    - Shares all translation logic via Template Method pattern
+    - Overrides only initialization and configuration methods
+  - **Removed Redundant Interface**: Eliminated `ITranslationProvider` interface
+    - BaseProvider abstract class serves as both contract and shared implementation
+    - Simplified architecture with single source of truth
+  - **Template Method Pattern**: OpenAIProvider now provides protected hook methods
+    - `getProviderName()`, `getModel()`, `getApiKeyMissingError()`, `getSettingsKey()`
+    - Enables clean inheritance and customization
+- **Skip Symbol-Only Text**: Skips translation for text containing only symbols/punctuation (no alphanumeric or CJK characters)
+  - Reduces unnecessary API calls for decorative separators like `========`
+- **BaseProvider Refactoring**: Unified symbol checking logic in base class (`checkTranslationNeeded`)
+  - Eliminates code duplication across all providers
+- **Multi-Language Documentation**: English README.md, Japanese README.ja.md, Chinese README.zh-CN.md
+- **Marketplace Links**: Added badges and links for VS Code Marketplace and Open VSX Registry
+- **Indent Preservation**: Improved algorithm to correctly preserve original indentation after translation
+- **Dependency Cleanup**: Removed unused `p-limit` dependency to reduce VSIX size
+
+### 📝 Documentation
+- **CHANGELOG Internationalization**: Converted CHANGELOG.md to English with comprehensive examples
+  - Added Markdown translation example in 1.1.0 release notes
+  - Standardized format following [Keep a Changelog](https://keepachangelog.com/) conventions
+- Unified all documentation links to GitHub absolute URLs (from relative paths)
+- Added Azure OpenAI configuration section
+- Added marketplace links in Installation section
+- Multi-language localization: package.nls.*.json, l10n/bundle.l10n.*.json
 
 ## [1.0.0]
 
-🎉 **正式版リリース** - プロダクションレディな品質を達成。
+🎉 **Official Release** - Production-ready quality achieved.
 
-### 主要機能
-- ✅ **マルチLLM対応**: Claude、OpenAI、Gemini（3プロバイダー）
-- ✅ **マルチ言語対応**: Python、JavaScript、TypeScript、Go（4言語）
-- ✅ **自動言語検出**: francライブラリによる翻訳元言語の自動認識
-- ✅ **インライン翻訳表示**: ホバー不要で常時表示、編集中も保持
-- ✅ **永続化キャッシュ**: API呼び出しを最小化、再起動後も保持
-- ✅ **エラーハンドリング**: 詳細なエラー通知とリトライ機能
-- ✅ **並列翻訳**: 最大5並列リクエスト、progressive translation
-- ✅ **CI/CD**: GitHub Actionsによる継続的インテグレーション
+### Core Features
+- ✅ **Multi-LLM Support**: Claude, OpenAI, Gemini (3 providers)
+- ✅ **Multi-Language Support**: Python, JavaScript, TypeScript, Go (4 languages)
+- ✅ **Automatic Language Detection**: Auto-detect source language using franc library
+- ✅ **Inline Translation Display**: Always visible without hover, persists during editing
+- ✅ **Persistent Cache**: Minimizes API calls, survives restarts
+- ✅ **Error Handling**: Detailed error notifications with retry mechanisms
+- ✅ **Parallel Translation**: Up to 5 concurrent requests with progressive translation
+- ✅ **CI/CD**: Continuous integration via GitHub Actions
 
-### 品質保証
-- 90個のユニットテスト（コアコンポーネントを網羅）
-- 包括的なドキュメント（ARCHITECTURE.md、CONTRIBUTING.md）
-- Mermaid図によるアーキテクチャドキュメント
-- TypeScript型安全性の完全実装
+### Quality Assurance
+- 90 unit tests covering core components
+- Comprehensive documentation (ARCHITECTURE.md, CONTRIBUTING.md)
+- Architecture diagrams with Mermaid
+- Full TypeScript type safety implementation
 
-### 開発者体験
-- 整理されたディレクトリ構造（providers/, detectors/, services/, utils/）
-- Factory PatternとTemplate Method Patternによる拡張性
-- ConfigManagerによる設定の一元管理
-- 詳細なロギングとデバッグ機能
+### Developer Experience
+- Organized directory structure (providers/, detectors/, services/, utils/)
+- Extensibility via Factory Pattern and Template Method Pattern
+- Centralized configuration management with ConfigManager
+- Detailed logging and debugging capabilities
 
-### ユーザー体験
-- 非侵入的なエラー通知（ダイアログ/ステータスバー）
-- スパム防止機能（60秒cooldown）
-- ステータスバーでの進捗表示とツールチップ
-- 翻訳失敗時のリトライオプション
+### User Experience
+- Non-intrusive error notifications (dialog/status bar)
+- Spam prevention (60-second cooldown)
+- Progress indication in status bar with tooltip
+- Retry options on translation failures
 
-このバージョンは安定しており、プロダクション環境での使用に適しています。
+This version is stable and suitable for production use.
 
 ## [0.5.1]
 
-バグ修正とパフォーマンス改善:
-- 翻訳表示の余白調整（視認性の向上）
-- エラー通知システムの追加
-  - Critical error: ダイアログ表示
-  - 通常error: ステータスバー表示（自動消滅）
-  - スパム防止（60秒cooldown）
-- ファイルオープン時の翻訳表示を改善
-  - キャッシュから即座に復元
-  - タブ切り替えで確実に表示
-- 編集中も翻訳表示を保持（編集操作で消えない）
-- 翻訳ロジックのシンプル化（キャッシュベース）
+Bug fixes and performance improvements:
+- Adjusted translation display margins for better readability
+- Added error notification system
+  - Critical errors: Dialog display
+  - Normal errors: Status bar display (auto-dismiss)
+  - Spam prevention (60-second cooldown)
+- Improved translation display on file open
+  - Instant restoration from cache
+  - Reliable display on tab switching
+- Translation display persists during editing (no longer disappears on edit)
+- Simplified translation logic (cache-based)
 
 ## [0.5.0]
 
-メジャーアップデート - 自動言語検出 & リファクタリング:
-- **自動言語検出**: francライブラリによる翻訳元言語の自動検出
-- **言語固有フォーマット**: Python `"""`, JS/TS `/** */`, Go `/* */`
-- **progressive translation**: 翻訳完了したブロックから順次表示
-- **コードリファクタリング**:
-  - ディレクトリ構造の整理（providers/, detectors/, services/, utils/）
-  - BaseProvider/BaseDetectorによる共通化
-  - ConfigManagerによる設定の一元管理
-  - 重複コードの削減（-245行）
-- **包括的なテスト**: 87テスト追加（unit tests）
+Major update - Automatic language detection & refactoring:
+- **Automatic Language Detection**: Auto-detect source language using franc library
+- **Language-Specific Formatting**: Python `"""`, JS/TS `/** */`, Go `/* */`
+- **Progressive Translation**: Display blocks as they complete translation
+- **Code Refactoring**:
+  - Organized directory structure (providers/, detectors/, services/, utils/)
+  - Shared logic via BaseProvider/BaseDetector
+  - Centralized configuration with ConfigManager
+  - Reduced code duplication (-245 lines)
+- **Comprehensive Testing**: Added 87 unit tests
 
 ## [0.4.0] - 2025-01-08
 
-### 追加機能
-- **複数のLLMプロバイダー対応**: Anthropic Claude、OpenAI、Google Geminiから選択可能
-  - プロバイダーごとのAPI認証とモデル設定
-  - プロバイダーファクトリーパターンによる拡張性の高い実装
-- **複数のプログラミング言語対応**: Python、JavaScript、TypeScript、Goに対応
-  - JavaScript/TypeScript: JSDoc、複数行コメント（`/* */`）、単一行コメント（`//`）
-  - Go: godoc、package doc、複数行コメント、単一行コメント
-  - 言語ごとの最適化されたブロック検出器
-- **翻訳言語の自由な設定**: 翻訳元（sourceLang）と翻訳先（targetLang）の言語を自由に設定可能
-  - 対応言語: en, ja, zh, ko, fr, de, es, it, pt, ru
-  - プロンプトテンプレートの多言語対応
+### Added
+- **Multiple LLM Provider Support**: Choose between Anthropic Claude, OpenAI, and Google Gemini
+  - Per-provider API authentication and model configuration
+  - Highly extensible implementation using Factory Pattern
+- **Multiple Programming Language Support**: Python, JavaScript, TypeScript, Go
+  - JavaScript/TypeScript: JSDoc, multi-line comments (`/* */`), single-line comments (`//`)
+  - Go: godoc, package doc, multi-line comments, single-line comments
+  - Language-optimized block detectors
+- **Flexible Translation Language Configuration**: Free configuration of source and target languages
+  - Supported languages: en, ja, zh, ko, fr, de, es, it, pt, ru
+  - Multi-language prompt templates
 
-### 変更
-- プロバイダー抽象化による拡張性の向上
-- ブロック検出器の抽象化とファクトリーパターン化
-- 各言語のLSP統合の改善
+### Changed
+- Enhanced extensibility through provider abstraction
+- Block detector abstraction and factory pattern implementation
+- Improved LSP integration for each language
 
-### 技術的な改善
-- `ITranslationProvider` インターフェースの導入
-- `IBlockDetector` インターフェースの導入
-- ファクトリーパターンによるプロバイダーとブロック検出器の管理
+### Technical Improvements
+- Introduced `ITranslationProvider` interface
+- Introduced `IBlockDetector` interface
+- Factory pattern-based management of providers and block detectors
 
 ## [0.3.0] - 2025-01-08
 
-### 追加機能
-- **インライン翻訳表示**: ホバー不要で常時表示
-  - コメント（`#`）: 各行の右側に翻訳を表示
-  - Docstring（`"""`/`'''`）: 原文を隠して翻訳をオーバーレイ
-- **複数行翻訳表示**: docstringの複数行翻訳を適切にフォーマット表示
-- **永続化キャッシュ**: VSCode globalStateを使用してキャッシュを永続化
-- **並列翻訳**: 最大5並列リクエストでrate limit対策
-- **カーソル・選択時の原文表示**: カーソルまたは選択がdocstringブロックにある時は翻訳を非表示
-- **モジュールdocstringサポート**: ファイルトップレベルのdocstringを翻訳
-- **ファイル保存時の自動再翻訳**: キャッシュを活用した高速再翻訳
-- **事前翻訳サービス**: Pythonファイルを開くと自動的にバックグラウンドで翻訳
+### Added
+- **Inline Translation Display**: Always visible without hover
+  - Comments (`#`): Translation shown on right side of each line
+  - Docstrings (`"""`/`'''`): Original text hidden, translation overlayed
+- **Multi-Line Translation Display**: Properly formatted multi-line docstring translations
+- **Persistent Cache**: Cache persisted using VSCode globalState
+- **Parallel Translation**: Up to 5 concurrent requests for rate limit handling
+- **Original Text on Cursor/Selection**: Hide translation when cursor or selection is in docstring block
+- **Module Docstring Support**: Translate top-level file docstrings
+- **Auto Re-translation on Save**: Fast re-translation using cache
+- **Pre-Translation Service**: Automatically translate Python files in background on open
 
-### 変更
-- モデルをClaude Haiku 4.5 (20251001)に変更
-- LSPベースのdocstring検出のみ使用（コメント検出ロジックを削除）
-- ホバープロバイダーを削除（インライン表示に置き換え）
+### Changed
+- Switched model to Claude Haiku 4.5 (20251001)
+- Use only LSP-based docstring detection (removed comment detection logic)
+- Removed hover provider (replaced with inline display)
 
-### 修正
-- docstring翻訳時のインデント問題を修正
-- 原文と翻訳が混在する表示問題を修正
+### Fixed
+- Fixed indentation issues in docstring translation
+- Fixed mixed display of original and translated text
 
 ## [0.1.0] - 2025-01-08
 
-### 追加機能
-- Pylanceを使用したLSPベースのdocstring検出
-- PythonのdocstringとコメントのホバープロバイダーBE
-- Claude API統合（Claude 4.5 Sonnet）
-- 翻訳キャッシングシステム
-- ステータスバーの読み込みインジケーター
-- 包括的なデバッグログ
-- 未保存のPythonファイル（untitledスキーム）のサポート
-- コマンド: キャッシュクリア、ログ表示
+### Added
+- LSP-based docstring detection using Pylance
+- Hover provider for Python docstrings and comments
+- Claude API integration (Claude 4.5 Sonnet)
+- Translation caching system
+- Status bar loading indicator
+- Comprehensive debug logging
+- Support for unsaved Python files (untitled scheme)
+- Commands: Clear cache, Show logs
 
-### 機能
-- 以下を検出して翻訳:
-  - 複数行docstring（`"""`と`'''`）
-  - コメントブロック（連続する`#`行）
-  - インラインコメント
-- 環境変数とsettings.jsonによる設定
-- モデル、APIキー、タイムアウトの設定可能
+### Features
+- Detects and translates:
+  - Multi-line docstrings (`"""` and `'''`)
+  - Comment blocks (consecutive `#` lines)
+  - Inline comments
+- Configuration via environment variables and settings.json
+- Configurable model, API key, and timeout
 
-## [未リリース]
+## [Unreleased]
 
-- 初回リリース
+- Initial release

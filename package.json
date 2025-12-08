@@ -2,7 +2,7 @@
   "name": "doc-translate",
   "displayName": "Doc Translate",
   "description": "%description%",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "publisher": "m-cube",
   "icon": "img/icon-design.png",
   "engines": {
@@ -38,7 +38,8 @@
           "enum": [
             "anthropic",
             "openai",
-            "gemini"
+            "gemini",
+            "azure-openai"
           ],
           "default": "anthropic",
           "description": "%config.provider%"
@@ -95,6 +96,26 @@
           "type": "string",
           "default": "gemini-2.0-flash-exp",
           "description": "%config.geminiModel%"
+        },
+        "docTranslate.azureOpenaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "%config.azureOpenaiApiKey%"
+        },
+        "docTranslate.azureOpenaiEndpoint": {
+          "type": "string",
+          "default": "",
+          "description": "%config.azureOpenaiEndpoint%"
+        },
+        "docTranslate.azureOpenaiApiVersion": {
+          "type": "string",
+          "default": "2024-02-15-preview",
+          "description": "%config.azureOpenaiApiVersion%"
+        },
+        "docTranslate.azureOpenaiDeploymentName": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "%config.azureOpenaiDeploymentName%"
         },
         "docTranslate.timeout": {
           "type": "number",
