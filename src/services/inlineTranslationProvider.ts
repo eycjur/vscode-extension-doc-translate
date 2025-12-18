@@ -66,6 +66,18 @@ export class InlineTranslationProvider {
         continue;
       }
 
+      // Skip overlay if translation is the same as original text
+      // (translation was skipped because it's already in target language)
+      // Normalize whitespace for comparison
+      const normalizedTranslation = translation.trim().replace(/\s+/g, ' ');
+      const normalizedOriginal = block.text.trim().replace(/\s+/g, ' ');
+      if (normalizedTranslation === normalizedOriginal) {
+        logger.debug(
+          `Skipping overlay for block (translation same as original): ${block.text.substring(0, 50)}...`
+        );
+        continue;
+      }
+
       if (block.type === 'comment') {
         // Comment: hide original and show translation overlay (same as docstring)
         const lineNum = block.range.start.line;
