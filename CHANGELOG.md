@@ -2,6 +2,14 @@
 
 All notable changes to the "doc-translate" extension will be documented in this file.
 
+## [1.1.3] - 2025-12-18
+
+### 🔧 Improvements & Fixes
+- **Inline Translation Display**: Improved inline translation display using overlay method
+  - Use overlay decoration for better visual integration of translations
+  - Automatically remove overlay for non-translated text to prevent visual artifacts
+  - Enhanced user experience with cleaner translation display
+
 ## [1.1.0] - 2025-12-08
 
 ### ✨ New Features
@@ -126,7 +134,7 @@ Major update - Automatic language detection & refactoring:
   - Reduced code duplication (-245 lines)
 - **Comprehensive Testing**: Added 87 unit tests
 
-## [0.4.0] - 2025-01-08
+## [0.4.0] - 2025-11-08
 
 ### Added
 - **Multiple LLM Provider Support**: Choose between Anthropic Claude, OpenAI, and Google Gemini
@@ -150,7 +158,7 @@ Major update - Automatic language detection & refactoring:
 - Introduced `IBlockDetector` interface
 - Factory pattern-based management of providers and block detectors
 
-## [0.3.0] - 2025-01-08
+## [0.3.0] - 2025-11-08
 
 ### Added
 - **Inline Translation Display**: Always visible without hover
@@ -173,7 +181,7 @@ Major update - Automatic language detection & refactoring:
 - Fixed indentation issues in docstring translation
 - Fixed mixed display of original and translated text
 
-## [0.1.0] - 2025-01-08
+## [0.1.0] - 2025-11-08
 
 ### Added
 - LSP-based docstring detection using Pylance
