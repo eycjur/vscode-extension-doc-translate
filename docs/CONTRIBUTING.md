@@ -1,62 +1,62 @@
 # Contributing to Doc Translate
 
-このドキュメントは、Doc Translate VSCode拡張機能の開発に貢献するためのガイドです。
+This document is a guide for contributing to the Doc Translate VSCode extension.
 
-## 目次
+## Table of Contents
 
-- [開発環境のセットアップ](#開発環境のセットアップ)
-- [プロジェクト構造](#プロジェクト構造)
-- [開発ワークフロー](#開発ワークフロー)
-- [テスト](#テスト)
-- [コーディング規約](#コーディング規約)
-- [新機能の追加](#新機能の追加)
-  - [新しいプログラミング言語のサポート](#新しいプログラミング言語のサポート)
-  - [新しいLLMプロバイダーのサポート](#新しいllmプロバイダーのサポート)
-- [デバッグ](#デバッグ)
-- [リリースプロセス](#リリースプロセス)
+- [Development Environment Setup](#development-environment-setup)
+- [Project Structure](#project-structure)
+- [Development Workflow](#development-workflow)
+- [Testing](#testing)
+- [Coding Standards](#coding-standards)
+- [Adding New Features](#adding-new-features)
+  - [Supporting a New Programming Language](#supporting-a-new-programming-language)
+  - [Supporting a New LLM Provider](#supporting-a-new-llm-provider)
+- [Debugging](#debugging)
+- [Release Process](#release-process)
 
-## 開発環境のセットアップ
+## Development Environment Setup
 
-### 必要要件
+### Requirements
 
-- **Node.js**: v16以上
-- **npm**: v7以上
-- **VSCode**: v1.80以上
-- **Git**: 最新版
+- **Node.js**: v16 or higher
+- **npm**: v7 or higher
+- **VSCode**: v1.80 or higher
+- **Git**: Latest version
 
-### インストール
+### Installation
 
-1. リポジトリをクローン：
+1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/vscode-extension-doc-translate.git
 cd vscode-extension-doc-translate
 ```
 
-2. 依存関係をインストール：
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. コンパイル：
+3. Compile:
 ```bash
 npm run compile
 ```
 
-4. APIキーを設定（テスト用）：
+4. Set up API keys (for testing):
 ```bash
-# いずれか1つ以上を設定
+# Set at least one of the following
 export ANTHROPIC_API_KEY="your-key-here"
 export OPENAI_API_KEY="your-key-here"
 export GEMINI_API_KEY="your-key-here"
 ```
 
-## プロジェクト構造
+## Project Structure
 
 ```
 vscode-extension-doc-translate/
 ├── src/
-│   ├── extension.ts                 # エントリーポイント
-│   ├── providers/                   # 翻訳プロバイダー
+│   ├── extension.ts                 # Entry point
+│   ├── providers/                   # Translation providers
 │   │   ├── base/
 │   │   │   ├── translationProvider.ts
 │   │   │   └── baseProvider.ts
@@ -64,7 +64,7 @@ vscode-extension-doc-translate/
 │   │   ├── openaiProvider.ts
 │   │   ├── geminiProvider.ts
 │   │   └── translationProviderFactory.ts
-│   ├── detectors/                   # ブロック検出器
+│   ├── detectors/                   # Block detectors
 │   │   ├── base/
 │   │   │   ├── blockDetector.ts
 │   │   │   └── baseDetector.ts
@@ -72,21 +72,21 @@ vscode-extension-doc-translate/
 │   │   ├── javascriptBlockDetector.ts
 │   │   ├── goBlockDetector.ts
 │   │   └── blockDetectorFactory.ts
-│   ├── services/                    # コアサービス
+│   ├── services/                    # Core services
 │   │   ├── preTranslationService.ts
 │   │   ├── inlineTranslationProvider.ts
 │   │   └── translationCache.ts
-│   ├── utils/                       # ユーティリティ
+│   ├── utils/                       # Utilities
 │   │   ├── logger.ts
 │   │   ├── config.ts
 │   │   ├── constants.ts
 │   │   ├── retryHelper.ts
 │   │   ├── languageDetector.ts
 │   │   └── commentFormatter.ts
-│   └── test/                        # テスト
+│   └── test/                        # Tests
 │       ├── *.test.ts
 │       └── assets/
-├── docs/                            # ドキュメント
+├── docs/                            # Documentation
 │   ├── ARCHITECTURE.md
 │   └── CONTRIBUTING.md
 ├── package.json
@@ -94,46 +94,46 @@ vscode-extension-doc-translate/
 └── README.md
 ```
 
-詳細なアーキテクチャ情報は [ARCHITECTURE.md](./ARCHITECTURE.md) を参照してください。
+For detailed architecture information, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-## 開発ワークフロー
+## Development Workflow
 
-### 1. 機能ブランチの作成
+### 1. Create a Feature Branch
 
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
-### 2. コード変更
+### 2. Make Code Changes
 
-変更を加えたら、自動コンパイルを有効にすると便利です：
+After making changes, it's helpful to enable auto-compilation:
 
 ```bash
 npm run watch
 ```
 
-これにより、ファイルを保存するたびに自動的にコンパイルされます。
+This will automatically compile whenever you save a file.
 
-### 3. テストの実行
+### 3. Run Tests
 
 ```bash
 npm test
 ```
 
-特定のテストファイルのみ実行：
+Run a specific test file:
 
 ```bash
 npm test -- --grep "LanguageDetector"
 ```
 
-### 4. 拡張機能のデバッグ
+### 4. Debug the Extension
 
-1. VSCodeでプロジェクトを開く
-2. `F5` キーを押す（または「実行」→「デバッグの開始」）
-3. 新しいVSCodeウィンドウが開き、拡張機能が読み込まれます
-4. テスト用のPython/JS/TS/Goファイルを開いて動作確認
+1. Open the project in VSCode
+2. Press `F5` (or "Run" → "Start Debugging")
+3. A new VSCode window will open with the extension loaded
+4. Open a test Python/JS/TS/Go file to verify functionality
 
-デバッグ時は、`src/utils/logger.ts` を活用してログを出力すると便利です：
+When debugging, it's helpful to use `src/utils/logger.ts` to output logs:
 
 ```typescript
 import { logger } from './utils/logger';
@@ -143,22 +143,22 @@ logger.debug('Debug message');
 logger.error('Error message', error);
 ```
 
-ログは「表示」→「出力」→「Doc Translate」で確認できます。
+Logs can be viewed in "View" → "Output" → "Doc Translate".
 
-## テスト
+## Testing
 
-### テストの構成
+### Test Structure
 
-- **Unit Tests**: 各コンポーネントの単体テスト（87テスト）
-  - `baseDetector.test.ts`: BaseBlockDetectorの共通メソッド
-  - `languageDetector.test.ts`: 言語検出（10言語以上）
-  - `commentFormatter.test.ts`: 言語固有フォーマット
-  - `translationCache.test.ts`: キャッシュCRUD・永続化
-  - `config.test.ts`: 設定管理
+- **Unit Tests**: Unit tests for each component (87 tests)
+  - `baseDetector.test.ts`: Common methods of BaseBlockDetector
+  - `languageDetector.test.ts`: Language detection (10+ languages)
+  - `commentFormatter.test.ts`: Language-specific formatting
+  - `translationCache.test.ts`: Cache CRUD and persistence
+  - `config.test.ts`: Configuration management
 
-### テストの書き方
+### Writing Tests
 
-新しいテストは `src/test/` に配置します。既存のテストを参考にしてください：
+Place new tests in `src/test/`. Refer to existing tests:
 
 ```typescript
 import * as assert from 'assert';
@@ -173,83 +173,83 @@ suite('YourClass Test Suite', () => {
 });
 ```
 
-### テストカバレッジ
+### Test Coverage
 
-主要なコンポーネントは必ずテストを書いてください：
-- 新しいプロバイダー（anthropicProvider.ts など）
-- 新しい検出器（pythonBlockDetector.ts など）
-- ユーティリティ関数（languageDetector.ts, commentFormatter.ts など）
+Please write tests for major components:
+- New providers (e.g., anthropicProvider.ts)
+- New detectors (e.g., pythonBlockDetector.ts)
+- Utility functions (e.g., languageDetector.ts, commentFormatter.ts)
 
 ## CI/CD
 
-### 継続的インテグレーション
+### Continuous Integration
 
-このプロジェクトはGitHub Actionsを使用してCIを実行しています。
+This project uses GitHub Actions for CI.
 
-**CIワークフロー** (`.github/workflows/ci.yml`):
-- **テスト**: Node.js 18.x と 20.x でテストを実行
-- **リント**: ESLintでコード品質をチェック
-- **ビルド**: 拡張機能パッケージ（.vsix）を作成
-- **TypeScriptチェック**: 型エラーをチェック
+**CI Workflow** (`.github/workflows/ci.yml`):
+- **Tests**: Run tests on Node.js 18.x and 20.x
+- **Lint**: Check code quality with ESLint
+- **Build**: Create extension package (.vsix)
+- **TypeScript Check**: Check for type errors
 
-### CI実行タイミング
+### CI Execution Timing
 
-- `main` ブランチへのプッシュ
-- プルリクエストの作成・更新
-- 手動実行（workflow_dispatch）
+- Push to `main` branch
+- Create or update pull requests
+- Manual execution (workflow_dispatch)
 
-### ローカルでCIと同じチェックを実行
+### Run the Same Checks Locally
 
-プッシュ前にローカルで同じチェックを実行することをお勧めします：
+It's recommended to run the same checks locally before pushing:
 
 ```bash
-# コンパイルチェック
+# Compile check
 npm run compile
 
-# リント
+# Lint
 npm run lint
 
-# テスト
+# Tests
 npm test
 
-# TypeScript型チェック
+# TypeScript type check
 npx tsc --noEmit
 
-# 拡張機能パッケージング（オプション）
+# Extension packaging (optional)
 npx vsce package
 ```
 
-### CIステータス
+### CI Status
 
-PRをマージする前に、すべてのCIチェックが通過していることを確認してください：
+Before merging a PR, ensure all CI checks pass:
 - ✅ Test on Node.js 18.x
 - ✅ Test on Node.js 20.x
 - ✅ Lint Code
 - ✅ Build Extension Package
 
-CIステータスはREADMEのバッジで確認できます：
+CI status can be checked via the badge in the README:
 
 [![CI](https://github.com/eycjur/vscode-extension-doc-translate/actions/workflows/ci.yml/badge.svg)](https://github.com/eycjur/vscode-extension-doc-translate/actions/workflows/ci.yml)
 
-## コーディング規約
+## Coding Standards
 
 ### TypeScript
 
-- **インデント**: タブ（プロジェクト設定に従う）
-- **命名規則**:
-  - クラス: `PascalCase` (例: `AnthropicProvider`)
-  - メソッド/変数: `camelCase` (例: `translateText`)
-  - 定数: `UPPER_SNAKE_CASE` (例: `MAX_CONCURRENT_REQUESTS`)
-  - インターフェース: `I` プレフィックス (例: `ITranslationProvider`)
-- **型**: 可能な限り型を明示する
-- **非同期**: `async/await` を使用（Promiseチェーンは避ける）
+- **Indentation**: Tabs (follow project settings)
+- **Naming Conventions**:
+  - Classes: `PascalCase` (e.g., `AnthropicProvider`)
+  - Methods/Variables: `camelCase` (e.g., `translateText`)
+  - Constants: `UPPER_SNAKE_CASE` (e.g., `MAX_CONCURRENT_REQUESTS`)
+  - Interfaces: `I` prefix (e.g., `ITranslationProvider`)
+- **Types**: Explicitly type as much as possible
+- **Async**: Use `async/await` (avoid Promise chains)
 
-### コメント
+### Comments
 
-- **JSDoc**: パブリックメソッドには必ずJSDocを記述
-- **インラインコメント**: 複雑なロジックには説明コメントを追加
+- **JSDoc**: Always write JSDoc for public methods
+- **Inline Comments**: Add explanatory comments for complex logic
 
-例：
+Example:
 ```typescript
 /**
  * Translate text from source language to target language
@@ -262,11 +262,11 @@ async translate(text: string, targetLang: string): Promise<string> {
 }
 ```
 
-### エラー処理
+### Error Handling
 
-- 予期されるエラーはキャッチして適切に処理
-- ユーザーに見せるエラーは `logger.notifyError()` または `logger.notifyCriticalError()` を使用
-- デバッグ情報は `logger.debug()` または `logger.info()` でログに記録
+- Catch and handle expected errors appropriately
+- Use `logger.notifyError()` or `logger.notifyCriticalError()` for user-facing errors
+- Record debug information with `logger.debug()` or `logger.info()`
 
 ```typescript
 try {
@@ -278,15 +278,15 @@ try {
 }
 ```
 
-## 新機能の追加
+## Adding New Features
 
-### 新しいプログラミング言語のサポート
+### Supporting a New Programming Language
 
-新しい言語（例: Rust）をサポートする場合：
+To support a new language (e.g., Rust):
 
-#### 1. 検出器の作成
+#### 1. Create a Detector
 
-`src/detectors/rustBlockDetector.ts` を作成：
+Create `src/detectors/rustBlockDetector.ts`:
 
 ```typescript
 import * as vscode from 'vscode';
@@ -298,48 +298,48 @@ export class RustBlockDetector extends BaseBlockDetector implements IBlockDetect
         document: vscode.TextDocument,
         position: vscode.Position
     ): Promise<TextBlock | null> {
-        // Rust固有の検出ロジックを実装
-        // 1. LSPでシンボル取得
+        // Implement Rust-specific detection logic
+        // 1. Get symbols from LSP
         const symbols = await this.getSymbolsFromLSP(document);
         if (!symbols) {
             return null;
         }
 
-        // 2. カーソル位置のシンボルを検索
+        // 2. Find symbol at cursor position
         const symbol = this.findSymbolAtPosition(symbols, position);
         if (!symbol) {
             return null;
         }
 
-        // 3. ドキュメントコメントを抽出
-        // Rustの場合: /// または //! コメント
-        // 実装...
+        // 3. Extract documentation comments
+        // For Rust: /// or //! comments
+        // Implementation...
     }
 
     async extractAllBlocks(document: vscode.TextDocument): Promise<TextBlock[]> {
         const blocks: TextBlock[] = [];
 
-        // 1. LSPでシンボル取得
+        // 1. Get symbols from LSP
         const symbols = await this.getSymbolsFromLSP(document);
         if (!symbols) {
             return blocks;
         }
 
-        // 2. すべてのシンボルからドキュメントコメントを抽出
-        // 実装...
+        // 2. Extract documentation comments from all symbols
+        // Implementation...
 
-        // 3. インラインコメントを抽出
-        // 実装...
+        // 3. Extract inline comments
+        // Implementation...
 
-        // 4. 重複を排除
+        // 4. Remove duplicates
         return this.deduplicateBlocks(blocks);
     }
 }
 ```
 
-#### 2. ファクトリーに登録
+#### 2. Register in Factory
 
-`src/detectors/blockDetectorFactory.ts` に追加：
+Add to `src/detectors/blockDetectorFactory.ts`:
 
 ```typescript
 import { RustBlockDetector } from './rustBlockDetector';
@@ -366,9 +366,9 @@ export class BlockDetectorFactory {
 }
 ```
 
-#### 3. コメントフォーマットの追加
+#### 3. Add Comment Format
 
-`src/utils/commentFormatter.ts` に追加：
+Add to `src/utils/commentFormatter.ts`:
 
 ```typescript
 export function getCommentFormat(languageId: string): CommentFormat {
@@ -387,35 +387,35 @@ export function getCommentFormat(languageId: string): CommentFormat {
 }
 ```
 
-#### 4. 設定の更新
+#### 4. Update Configuration
 
-`package.json` の `configuration` に追加：
+Add to `package.json` `configuration`:
 
 ```json
 {
     "docTranslate.supportedLanguages": {
         "type": "array",
         "default": ["python", "javascript", "typescript", "go", "rust"],
-        "description": "翻訳対象のプログラミング言語"
+        "description": "Programming languages to translate"
     }
 }
 ```
 
-#### 5. テストの追加
+#### 5. Add Tests
 
-`src/test/rustBlockDetector.test.ts` を作成し、テストを追加。
+Create `src/test/rustBlockDetector.test.ts` and add tests.
 
-#### 6. サンプルファイルの作成
+#### 6. Create Sample File
 
-`src/test/assets/sample.rs` を作成してテスト用のサンプルコードを追加。
+Create `src/test/assets/sample.rs` and add sample code for testing.
 
-### 新しいLLMプロバイダーのサポート
+### Supporting a New LLM Provider
 
-新しいLLM（例: Cohere）をサポートする場合：
+To support a new LLM (e.g., Cohere):
 
-#### 1. プロバイダーの作成
+#### 1. Create Provider
 
-`src/providers/cohereProvider.ts` を作成：
+Create `src/providers/cohereProvider.ts`:
 
 ```typescript
 import { BaseProvider } from './base/baseProvider';
@@ -435,7 +435,7 @@ export class CohereProvider extends BaseProvider implements ITranslationProvider
     private async initializeClient(): Promise<void> {
         const apiKey = ConfigManager.getCohereApiKey();
         if (apiKey) {
-            // Cohere SDK のインポートと初期化
+            // Import and initialize Cohere SDK
             const { CohereClient } = await import('cohere-ai');
             this.client = new CohereClient({ apiKey });
             logger.info('Cohere client initialized successfully');
@@ -447,7 +447,7 @@ export class CohereProvider extends BaseProvider implements ITranslationProvider
     async translate(text: string, targetLang: string): Promise<string> {
         logger.info(`Cohere translation request received`);
 
-        // 翻訳が必要かチェック（BaseProviderのメソッド）
+        // Check if translation is needed (BaseProvider method)
         const skipResult = await this.checkTranslationNeeded(text, targetLang);
         if (skipResult !== null) {
             return skipResult;
@@ -459,7 +459,7 @@ export class CohereProvider extends BaseProvider implements ITranslationProvider
             throw new Error(errorMsg);
         }
 
-        // プロンプト構築（BaseProviderのメソッド）
+        // Build prompt (BaseProvider method)
         const prompt = this.buildPrompt(text, targetLang);
         const timeout = ConfigManager.getTimeout();
         const retryConfig = ConfigManager.getRetryConfig();
@@ -469,7 +469,7 @@ export class CohereProvider extends BaseProvider implements ITranslationProvider
                 async () => {
                     const response = await this.client.chat({
                         message: prompt,
-                        // Cohere固有の設定
+                        // Cohere-specific settings
                     });
                     return response.text.trim();
                 },
@@ -491,9 +491,9 @@ export class CohereProvider extends BaseProvider implements ITranslationProvider
 }
 ```
 
-#### 2. ファクトリーに登録
+#### 2. Register in Factory
 
-`src/providers/translationProviderFactory.ts` に追加：
+Add to `src/providers/translationProviderFactory.ts`:
 
 ```typescript
 import { CohereProvider } from './cohereProvider';
@@ -520,9 +520,9 @@ export class TranslationProviderFactory {
 }
 ```
 
-#### 3. 設定の追加
+#### 3. Add Configuration
 
-`package.json` に追加：
+Add to `package.json`:
 
 ```json
 {
@@ -548,9 +548,9 @@ export class TranslationProviderFactory {
 }
 ```
 
-#### 4. ConfigManagerの更新
+#### 4. Update ConfigManager
 
-`src/utils/config.ts` に追加：
+Add to `src/utils/config.ts`:
 
 ```typescript
 export class ConfigManager {
@@ -566,7 +566,7 @@ export class ConfigManager {
 }
 ```
 
-`src/utils/constants.ts` に追加：
+Add to `src/utils/constants.ts`:
 
 ```typescript
 export const DEFAULT_CONFIG = {
@@ -575,23 +575,23 @@ export const DEFAULT_CONFIG = {
 };
 ```
 
-#### 5. 型定義の更新
+#### 5. Update Type Definitions
 
-プロバイダー型に追加：
+Add to provider type:
 
 ```typescript
 export type LLMProvider = 'anthropic' | 'openai' | 'gemini' | 'cohere';
 ```
 
-#### 6. テストの追加
+#### 6. Add Tests
 
-`src/test/cohereProvider.test.ts` を作成。
+Create `src/test/cohereProvider.test.ts`.
 
-## デバッグ
+## Debugging
 
-### ログの活用
+### Using Logs
 
-デバッグ情報はログに記録します：
+Record debug information in logs:
 
 ```typescript
 logger.debug('Detailed debug info', { variable1, variable2 });
@@ -600,34 +600,34 @@ logger.warn('Warning message');
 logger.error('Error message', error);
 ```
 
-ログは「表示」→「出力」→「Doc Translate」で確認できます。
+Logs can be viewed in "View" → "Output" → "Doc Translate".
 
-### ブレークポイント
+### Breakpoints
 
-1. VSCodeでブレークポイントを設定
-2. `F5` キーでデバッグ実行
-3. 新しいウィンドウで拡張機能を使用
-4. ブレークポイントで停止し、変数を確認
+1. Set breakpoints in VSCode
+2. Press `F5` to start debugging
+3. Use the extension in the new window
+4. Stop at breakpoints and inspect variables
 
-### 問題のトラブルシューティング
+### Troubleshooting Issues
 
-#### 翻訳が表示されない
+#### Translations Not Displaying
 
-1. ログを確認（「Doc Translate: Show Logs」コマンド）
-2. APIキーが正しく設定されているか確認
-3. LSPが正しく動作しているか確認（言語拡張機能がインストールされているか）
+1. Check logs ("Doc Translate: Show Logs" command)
+2. Verify API keys are configured correctly
+3. Verify LSP is working correctly (check if language extensions are installed)
 
-#### パフォーマンスが遅い
+#### Performance is Slow
 
-1. キャッシュが正しく動作しているか確認
-2. 並列リクエスト数を調整（`MAX_CONCURRENT_REQUESTS`）
-3. タイムアウト設定を確認
+1. Verify cache is working correctly
+2. Adjust concurrent request count (`MAX_CONCURRENT_REQUESTS`)
+3. Check timeout settings
 
-## リリースプロセス
+## Release Process
 
-### 1. バージョン更新
+### 1. Update Version
 
-`package.json` のバージョンを更新：
+Update version in `package.json`:
 
 ```json
 {
@@ -635,11 +635,11 @@ logger.error('Error message', error);
 }
 ```
 
-### 2. CHANGELOGの更新
+### 2. Update CHANGELOG
 
-`README.md` のリリースノートセクションに新しいバージョンを追加。
+Add the new version to the release notes section in `CHANGELOG.md`.
 
-### 3. コミット
+### 3. Commit
 
 ```bash
 git add .
@@ -648,26 +648,26 @@ git tag v0.5.2
 git push origin main --tags
 ```
 
-### 4. パッケージング
+### 4. Package
 
 ```bash
 vsce package
 ```
 
-### 5. 公開
+### 5. Publish
 
-VSCode Marketplaceに公開：
+Publish to VSCode Marketplace:
 
 ```bash
 vsce publish
 ```
 
-## 質問・サポート
+## Questions & Support
 
-- **Issues**: GitHubのIssuesで質問や問題を報告
-- **Discussions**: 機能提案や一般的な議論はDiscussionsで
-- **ドキュメント**: [ARCHITECTURE.md](./ARCHITECTURE.md)でアーキテクチャの詳細を確認
+- **Issues**: Report questions or issues in GitHub Issues
+- **Discussions**: Feature proposals and general discussions in Discussions
+- **Documentation**: Check [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture information
 
 ---
 
-貢献いただきありがとうございます！🎉
+Thank you for contributing! 🎉
