@@ -311,9 +311,37 @@ ${JSON.stringify(texts, null, 2)}`;
       return [];
     }
 
+    // Check which texts need translation (language detection) - parallel check
+    const checks = await Promise.all(
+      texts.map((text) => this.checkTranslationNeeded(text, targetLang))
+    );
+
+    const results: string[] = new Array(texts.length);
+    const indicesToTranslate: number[] = [];
+    const textsToTranslate: string[] = [];
+
+    for (let i = 0; i < texts.length; i++) {
+      if (checks[i] !== null) {
+        results[i] = checks[i]!; // Skip translation, use original
+      } else {
+        indicesToTranslate.push(i);
+        textsToTranslate.push(texts[i]);
+      }
+    }
+
+    // If all texts are skipped, return results
+    if (textsToTranslate.length === 0) {
+      logger.info('All texts skipped (already in target language or symbols only)');
+      return results;
+    }
+
+    logger.info(
+      `${textsToTranslate.length} out of ${texts.length} texts need translation`
+    );
+
     await this.ensureClientInitialized();
 
-    const prompt = this.buildBatchPrompt(texts, targetLang);
+    const prompt = this.buildBatchPrompt(textsToTranslate, targetLang);
     const model = this.getModel();
     const timeout = ConfigManager.getTimeout();
     const retryConfig = ConfigManager.getRetryConfig();
@@ -336,7 +364,7 @@ ${JSON.stringify(texts, null, 2)}`;
           const responseText = await this.callBatchTranslationAPI(
             prompt,
             timeout,
-            texts.length
+            textsToTranslate.length
           );
 
           const duration = Date.now() - startTime;
@@ -347,11 +375,11 @@ ${JSON.stringify(texts, null, 2)}`;
           logger.info(`${providerName} batch response received, attempting to parse...`);
           logger.debug(`Raw ${providerName} batch response:`, responseText);
 
-          const result = this.parseBatchResponse(responseText);
+          const batchResults = this.parseBatchResponse(responseText);
 
-          if (result.length !== texts.length) {
+          if (batchResults.length !== textsToTranslate.length) {
             logger.warn(
-              `${providerName} batch response count mismatch. Expected ${texts.length}, got ${result.length}. Falling back to sequential translation.`
+              `${providerName} batch response count mismatch. Expected ${textsToTranslate.length}, got ${batchResults.length}. Falling back to sequential translation.`
             );
             throw new Error('Batch response count mismatch');
           }
@@ -361,16 +389,21 @@ ${JSON.stringify(texts, null, 2)}`;
           logger.info('='.repeat(60));
           logger.info(`${providerName.toUpperCase()} BATCH RESPONSE:`);
           logger.info('-'.repeat(60));
-          logger.info(JSON.stringify(result, null, 2));
+          logger.info(JSON.stringify(batchResults, null, 2));
           logger.info('='.repeat(60));
 
-          return result;
+          return batchResults;
         },
         retryConfig,
         `${providerName} batch translation`
       );
 
-      return translations;
+      // Place translations back into results array
+      for (let i = 0; i < translations.length; i++) {
+        results[indicesToTranslate[i]] = translations[i];
+      }
+
+      return results;
     } catch (error: any) {
       if (error.name === 'AbortError' || error.message === 'timeout') {
         const errorMsg = vscode.l10n.t('error.translation.timeout', timeout);
