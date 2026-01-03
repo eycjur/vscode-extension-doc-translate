@@ -3,6 +3,7 @@
   "config.provider": "使用的 LLM 提供商",
   "config.targetLang": "目标语言代码（例如：en, ja, zh, ko, fr, de, es, it, pt, ru）",
   "config.supportedLanguages": "支持翻译的编程语言",
+  "config.exclude": "用于排除翻译的 glob 模式（工作区相对路径或文件名）",
   "config.anthropicApiKey": "Anthropic API 密钥（优先使用 ANTHROPIC_API_KEY 环境变量）",
   "config.model": "用于翻译的 Anthropic 模型",
   "config.openaiApiKey": "OpenAI API 密钥（优先使用 OPENAI_API_KEY 环境变量）",

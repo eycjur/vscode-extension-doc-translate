@@ -5,6 +5,8 @@ import { PreTranslationService } from './services/preTranslationService';
 import { InlineTranslationProvider } from './services/inlineTranslationProvider';
 import { BlockDetectorFactory } from './detectors/blockDetectorFactory';
 import { logger } from './utils/logger';
+import { ConfigManager } from './utils/config';
+import { isDocumentExcluded } from './utils/excludeMatcher';
 
 export function activate(context: vscode.ExtensionContext) {
   logger.info('='.repeat(60));
@@ -26,6 +28,19 @@ export function activate(context: vscode.ExtensionContext) {
     inlineProvider
   );
   logger.info('Pre-translation service created');
+
+  const refreshExcludeForOpenDocuments = () => {
+    vscode.workspace.textDocuments.forEach((doc) => {
+      if (!BlockDetectorFactory.isLanguageSupported(doc.languageId)) {
+        return;
+      }
+      if (isDocumentExcluded(doc, ConfigManager.getExcludePatterns())) {
+        preTranslationService.clearFileCache(doc.uri);
+        return;
+      }
+      preTranslationService.preTranslateDocument(doc);
+    });
+  };
 
   // Register command to clear translation cache
   const clearCacheCommand = vscode.commands.registerCommand(
@@ -60,6 +75,11 @@ export function activate(context: vscode.ExtensionContext) {
           TranslationProviderFactory.clearCache();
         }
         TranslationProviderFactory.updateConfiguration();
+
+        if (event.affectsConfiguration('docTranslate.exclude')) {
+          logger.info('Exclude patterns changed, refreshing open documents');
+          refreshExcludeForOpenDocuments();
+        }
       }
     }
   );

@@ -62,6 +62,14 @@
           ],
           "description": "%config.supportedLanguages%"
         },
+        "docTranslate.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "%config.exclude%"
+        },
         "docTranslate.anthropicApiKey": {
           "type": "string",
           "default": "",
@@ -148,6 +156,7 @@
     "@anthropic-ai/sdk": "^0.32.0",
     "@google/generative-ai": "^0.24.1",
     "franc": "^6.2.0",
+    "minimatch": "^9.0.5",
     "openai": "^6.8.1"
   },
   "devDependencies": {

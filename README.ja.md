@@ -46,6 +46,7 @@
   - 翻訳元言語は自動検出されます
   - 対応言語: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru` など
 * `docTranslate.supportedLanguages`: 翻訳対象のプログラミング言語（デフォルト: `["python", "javascript", "typescript", "go"]`）
+* `docTranslate.exclude`: 翻訳から除外するファイルのglobパターン（ワークスペース相対パスまたはファイル名、例: `docs/**/*.md`, `*.md`）
 * `docTranslate.timeout`: APIリクエストのタイムアウト（ミリ秒、デフォルト: `30000`）
 * `docTranslate.maxRetries`: 最大リトライ回数（デフォルト: `3`）
 * `docTranslate.retryInitialDelay`: リトライ初期遅延（ミリ秒、デフォルト: `1000`）

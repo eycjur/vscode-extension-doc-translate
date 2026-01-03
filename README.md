@@ -82,6 +82,7 @@ This extension contributes the following settings:
   - Source language is automatically detected
   - Supported languages: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`, etc.
 * `docTranslate.supportedLanguages`: Programming languages to translate (default: `["python", "javascript", "typescript", "go"]`)
+* `docTranslate.exclude`: Glob patterns to exclude files (workspace-relative path or basename, e.g. `docs/**/*.md`, `*.md`)
 * `docTranslate.timeout`: API request timeout in milliseconds (default: `30000`)
 * `docTranslate.maxRetries`: Maximum retry count (default: `3`)
 * `docTranslate.retryInitialDelay`: Initial retry delay in milliseconds (default: `1000`)

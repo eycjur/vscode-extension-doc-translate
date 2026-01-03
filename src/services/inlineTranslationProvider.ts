@@ -3,6 +3,7 @@ import { TranslationCache } from './translationCache';
 import { logger } from '../utils/logger';
 import { formatDocstring, formatComment } from '../utils/commentFormatter';
 import { ConfigManager } from '../utils/config';
+import { isDocumentExcluded } from '../utils/excludeMatcher';
 
 interface DocstringDecorationGroup {
   blockRange: vscode.Range; // Original docstring block range
@@ -51,6 +52,12 @@ export class InlineTranslationProvider {
       type: 'docstring' | 'comment';
     }>
   ): Promise<void> {
+    if (isDocumentExcluded(document, ConfigManager.getExcludePatterns())) {
+      this.clearFileDecorations(document.uri);
+      logger.info(`Skipped inline translations for excluded file: ${document.fileName}`);
+      return;
+    }
+
     const fileKey = document.uri.toString();
     const commentGroups: CommentDecorationGroup[] = [];
     const docstringGroups: DocstringDecorationGroup[] = [];

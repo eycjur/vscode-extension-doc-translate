@@ -7,6 +7,7 @@ import { InlineTranslationProvider } from './inlineTranslationProvider';
 import { logger } from '../utils/logger';
 import { ConfigManager } from '../utils/config';
 import { TextBlock } from '../detectors/base/blockDetector';
+import { isDocumentExcluded } from '../utils/excludeMatcher';
 
 interface ITranslationProvider {
   translate(text: string, targetLang: string): Promise<string>;
@@ -42,6 +43,13 @@ export class PreTranslationService {
   async preTranslateDocument(document: vscode.TextDocument): Promise<void> {
     // Only process supported languages
     if (!BlockDetectorFactory.isLanguageSupported(document.languageId)) {
+      return;
+    }
+
+    const excludePatterns = ConfigManager.getExcludePatterns();
+    if (isDocumentExcluded(document, excludePatterns)) {
+      this.inlineProvider.clearFileDecorations(document.uri);
+      logger.info(`Excluded from translation: ${document.fileName}`);
       return;
     }
 
