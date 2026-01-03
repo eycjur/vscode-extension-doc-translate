@@ -61,7 +61,11 @@ class Logger {
     if (data) {
       this.outputChannel.appendLine(`  ${JSON.stringify(data, null, 2)}`);
     }
-    console.log(formatted, data);
+    if (data !== undefined) {
+      console.log(formatted, data);
+      return;
+    }
+    console.log(formatted);
   }
 
   public show(): void {

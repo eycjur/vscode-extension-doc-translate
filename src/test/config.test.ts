@@ -147,6 +147,7 @@ suite('Config Manager Test Suite', () => {
             assert.ok(ConfigManager.getAnthropicModel() !== undefined, 'getAnthropicModel should be defined');
             assert.ok(ConfigManager.getOpenAIModel() !== undefined, 'getOpenAIModel should be defined');
             assert.ok(ConfigManager.getGeminiModel() !== undefined, 'getGeminiModel should be defined');
+            assert.ok(ConfigManager.getExcludePatterns() !== undefined, 'getExcludePatterns should be defined');
         });
 
         test('retry config should have all required properties', () => {

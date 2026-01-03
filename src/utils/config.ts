@@ -145,6 +145,13 @@ export class ConfigManager {
   }
 
   /**
+   * Get excluded file patterns
+   */
+  static getExcludePatterns(): string[] {
+    return this.getConfig().get<string[]>('exclude') || DEFAULT_CONFIG.EXCLUDE;
+  }
+
+  /**
    * Get Azure OpenAI API key
    * Priority: VSCode settings > Environment variable
    */

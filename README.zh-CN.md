@@ -43,6 +43,7 @@
   - 源语言自动检测
   - 支持语言: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru` 等
 * `docTranslate.supportedLanguages`: 翻译对象的编程语言（默认: `["python", "javascript", "typescript", "go"]`）
+* `docTranslate.exclude`: 排除翻译的 glob 模式（工作区相对路径或文件名，例如：`docs/**/*.md`, `*.md`）
 * `docTranslate.timeout`: API 请求超时（毫秒，默认: `30000`）
 * `docTranslate.maxRetries`: 最大重试次数（默认: `3`）
 * `docTranslate.retryInitialDelay`: 重试初始延迟（毫秒，默认: `1000`）
