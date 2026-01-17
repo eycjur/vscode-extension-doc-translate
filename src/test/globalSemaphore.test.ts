@@ -183,4 +183,31 @@ suite('GlobalSemaphore Test Suite', () => {
       assert.strictEqual(semaphore.getMaxConcurrent(), 7, 'Should return 7');
     });
   });
+
+  suite('Edge Cases', () => {
+    test('should not go negative when release is called without acquire', () => {
+      const semaphore = GlobalSemaphore.getInstance(5);
+      
+      // Call release without acquire
+      semaphore.release();
+      semaphore.release();
+      
+      // Should stay at 0, not go negative
+      assert.strictEqual(semaphore.getActiveCount(), 0, 'Should not go negative');
+    });
+
+    test('should handle extra release calls gracefully', async () => {
+      const semaphore = GlobalSemaphore.getInstance(5);
+      
+      await semaphore.acquire();
+      assert.strictEqual(semaphore.getActiveCount(), 1, 'Should have 1 active');
+      
+      // Release more times than acquired
+      semaphore.release();
+      semaphore.release();
+      semaphore.release();
+      
+      assert.strictEqual(semaphore.getActiveCount(), 0, 'Should be 0, not negative');
+    });
+  });
 });

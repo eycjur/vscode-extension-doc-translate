@@ -12,7 +12,10 @@ export class GlobalSemaphore {
   }
 
   /**
-   * Get the singleton instance of the global semaphore
+   * Get the singleton instance of the global semaphore.
+   * If the instance already exists, the maxConcurrent parameter is ignored.
+   * Use updateMaxConcurrent() to change the limit after initialization.
+   * @param maxConcurrent Initial maximum concurrent requests (only used on first call)
    */
   static getInstance(maxConcurrent: number = 10): GlobalSemaphore {
     if (!GlobalSemaphore.instance) {
@@ -47,10 +50,14 @@ export class GlobalSemaphore {
   }
 
   /**
-   * Release a slot in the semaphore
+   * Release a slot in the semaphore.
+   * Should only be called after a successful acquire().
+   * Validates that currentCount is positive before decrementing.
    */
   release(): void {
-    this.currentCount--;
+    if (this.currentCount > 0) {
+      this.currentCount--;
+    }
     this.processWaitingQueue();
   }
 
