@@ -8,20 +8,19 @@ import { logger } from '../utils/logger';
 import { ConfigManager } from '../utils/config';
 import { TextBlock } from '../detectors/base/blockDetector';
 import { isDocumentExcluded } from '../utils/excludeMatcher';
+import { GlobalSemaphore } from '../utils/globalSemaphore';
 
 interface ITranslationProvider {
   translate(text: string, targetLang: string): Promise<string>;
   translateBatch(texts: string[], targetLang: string): Promise<string[]>;
 }
 
-// Maximum number of concurrent translation requests
-const MAX_CONCURRENT_REQUESTS = 5;
-
 export class PreTranslationService {
   private cache: TranslationCache;
   private inlineProvider: InlineTranslationProvider;
   private statusBarItem: vscode.StatusBarItem;
   private activeTranslations = new Map<string, Promise<void>>();
+  private globalSemaphore: GlobalSemaphore;
 
   constructor(
     cache: TranslationCache,
@@ -34,6 +33,15 @@ export class PreTranslationService {
       90
     );
     this.statusBarItem.command = 'doc-translate.showLogs';
+    // Initialize global semaphore with configured max concurrent requests
+    this.globalSemaphore = GlobalSemaphore.getInstance(ConfigManager.getMaxConcurrentRequests());
+  }
+
+  /**
+   * Update the global semaphore limit when configuration changes
+   */
+  updateConcurrencyLimit(): void {
+    this.globalSemaphore.updateMaxConcurrent(ConfigManager.getMaxConcurrentRequests());
   }
 
   /**
@@ -126,7 +134,7 @@ export class PreTranslationService {
         translated = blocks.length;
       } else {
         logger.info(
-          `Translating ${blocksToTranslate.length} blocks with max ${MAX_CONCURRENT_REQUESTS} concurrent requests`
+          `Translating ${blocksToTranslate.length} blocks with global max ${this.globalSemaphore.getMaxConcurrent()} concurrent requests`
         );
 
         // Display cached translations first
@@ -203,7 +211,8 @@ export class PreTranslationService {
   }
 
   /**
-   * Translate blocks concurrently with a limit on concurrent requests
+   * Translate blocks concurrently with a global limit on concurrent requests
+   * Uses GlobalSemaphore to limit requests across all files
    * Updates inline translations progressively as each block completes
    */
   private async translateBlocksConcurrently(
@@ -213,61 +222,53 @@ export class PreTranslationService {
     onProgress: (current: number, total: number) => void
   ): Promise<TextBlock[]> {
     let completed = 0;
-    let index = 0;
     const failedBlocks: TextBlock[] = [];
 
     // Get translation provider and language settings
     const provider = TranslationProviderFactory.getProvider();
     const targetLang = ConfigManager.getTargetLang();
 
-    // Process blocks in batches
+    const BATCH_SIZE = 10;
+    const MAX_BATCH_LENGTH = 2000;
+
+    // Prepare all batches upfront
+    const allBatches: TextBlock[][] = [];
+    let index = 0;
+
     while (index < blocksToTranslate.length) {
-      // Get next batch (up to MAX_CONCURRENT_REQUESTS * BATCH_SIZE)
-      // We want to process multiple batches concurrently
+      const batch: TextBlock[] = [];
+      let currentBatchLength = 0;
 
-      const BATCH_SIZE = 10;
-      const MAX_BATCH_LENGTH = 2000;
+      while (index < blocksToTranslate.length) {
+        const block = blocksToTranslate[index];
 
-      // Prepare batches for this concurrent run
-      const currentRunBatches: TextBlock[][] = [];
-
-      // Fill up to MAX_CONCURRENT_REQUESTS batches
-      while (
-        currentRunBatches.length < MAX_CONCURRENT_REQUESTS &&
-        index < blocksToTranslate.length
-      ) {
-        const batch: TextBlock[] = [];
-        let currentBatchLength = 0;
-
-        // Fill one batch
-        while (index < blocksToTranslate.length) {
-          const block = blocksToTranslate[index];
-
-          // Check limits for current batch
-          if (
-            batch.length > 0 &&
-            (batch.length >= BATCH_SIZE ||
-              currentBatchLength + block.text.length > MAX_BATCH_LENGTH)
-          ) {
-            break; // Batch full
-          }
-
-          batch.push(block);
-          currentBatchLength += block.text.length;
-          index++;
+        // Check limits for current batch
+        if (
+          batch.length > 0 &&
+          (batch.length >= BATCH_SIZE ||
+            currentBatchLength + block.text.length > MAX_BATCH_LENGTH)
+        ) {
+          break; // Batch full
         }
 
-        if (batch.length > 0) {
-          currentRunBatches.push(batch);
-        }
+        batch.push(block);
+        currentBatchLength += block.text.length;
+        index++;
       }
 
-      logger.info(
-        `Processing ${currentRunBatches.length} batches concurrently`
-      );
+      if (batch.length > 0) {
+        allBatches.push(batch);
+      }
+    }
 
-      // Process these batches concurrently
-      const promises = currentRunBatches.map(async (batch) => {
+    logger.info(
+      `Prepared ${allBatches.length} batches for translation (global semaphore limit: ${this.globalSemaphore.getMaxConcurrent()})`
+    );
+
+    // Process all batches with global semaphore control
+    const promises = allBatches.map(async (batch) => {
+      // Use global semaphore to limit concurrent API requests across all files
+      return this.globalSemaphore.execute(async () => {
         try {
           const textsToTranslate = batch.map((b) => b.text);
           // Cast provider to ITranslationProvider to access translateBatch
@@ -317,9 +318,9 @@ export class PreTranslationService {
           logger.error('Batch translation failed', error);
         }
       });
+    });
 
-      await Promise.all(promises);
-    }
+    await Promise.all(promises);
 
     logger.info(
       `Concurrent translation completed: ${completed}/${blocksToTranslate.length} blocks translated`

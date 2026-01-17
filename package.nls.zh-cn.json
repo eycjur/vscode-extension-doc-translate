@@ -18,6 +18,7 @@
   "config.timeout": "API 请求超时时间（毫秒）",
   "config.maxRetries": "速率限制时的最大重试次数",
   "config.retryInitialDelay": "重试初始延迟（毫秒）",
+  "config.maxConcurrentRequests": "所有文件中同时执行的 API 请求最大数量（默认：10）。限制并行请求数以防止速率限制。",
   "command.clearCache": "Doc Translate: 清除翻译缓存",
   "command.showLogs": "Doc Translate: 显示日志"
 }
