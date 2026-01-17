@@ -148,6 +148,7 @@ suite('Config Manager Test Suite', () => {
             assert.ok(ConfigManager.getOpenAIModel() !== undefined, 'getOpenAIModel should be defined');
             assert.ok(ConfigManager.getGeminiModel() !== undefined, 'getGeminiModel should be defined');
             assert.ok(ConfigManager.getExcludePatterns() !== undefined, 'getExcludePatterns should be defined');
+            assert.ok(ConfigManager.getMaxConcurrentRequests() !== undefined, 'getMaxConcurrentRequests should be defined');
         });
 
         test('retry config should have all required properties', () => {
@@ -155,6 +156,23 @@ suite('Config Manager Test Suite', () => {
 
             assert.ok('maxRetries' in retryConfig, 'Should have maxRetries property');
             assert.ok('initialDelayMs' in retryConfig, 'Should have initialDelayMs property');
+        });
+    });
+
+    suite('Max Concurrent Requests Configuration', () => {
+        test('should return valid max concurrent requests value', () => {
+            const maxConcurrent = ConfigManager.getMaxConcurrentRequests();
+
+            assert.ok(typeof maxConcurrent === 'number', 'Should return a number');
+            assert.ok(maxConcurrent > 0, 'Max concurrent should be positive');
+        });
+
+        test('should have reasonable default value', () => {
+            const maxConcurrent = ConfigManager.getMaxConcurrentRequests();
+
+            // Default is 10 as per package.json
+            assert.ok(maxConcurrent >= 1, 'Max concurrent should be at least 1');
+            assert.ok(maxConcurrent <= 50, 'Max concurrent should be at most 50');
         });
     });
 });

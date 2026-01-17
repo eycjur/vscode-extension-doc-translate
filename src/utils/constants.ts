@@ -28,7 +28,8 @@ export const DEFAULT_CONFIG = {
     GEMINI_MODEL: 'gemini-2.0-flash-exp',
     AZURE_OPENAI_API_VERSION: '2024-02-15-preview',
     AZURE_OPENAI_DEPLOYMENT_NAME: 'gpt-4o-mini',
-    EXCLUDE: [] as string[]
+    EXCLUDE: [] as string[],
+    MAX_CONCURRENT_REQUESTS: 10
 };
 
 /**

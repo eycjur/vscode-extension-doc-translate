@@ -80,6 +80,11 @@ export function activate(context: vscode.ExtensionContext) {
           logger.info('Exclude patterns changed, refreshing open documents');
           refreshExcludeForOpenDocuments();
         }
+
+        if (event.affectsConfiguration('docTranslate.maxConcurrentRequests')) {
+          logger.info('Max concurrent requests changed, updating semaphore limit');
+          preTranslationService.updateConcurrencyLimit();
+        }
       }
     }
   );

@@ -190,4 +190,11 @@ export class ConfigManager {
   static getAzureOpenAIDeploymentName(): string {
     return this.getConfig().get<string>('azureOpenaiDeploymentName') || DEFAULT_CONFIG.AZURE_OPENAI_DEPLOYMENT_NAME;
   }
+
+  /**
+   * Get maximum concurrent API requests across all files
+   */
+  static getMaxConcurrentRequests(): number {
+    return this.getConfig().get<number>('maxConcurrentRequests') || DEFAULT_CONFIG.MAX_CONCURRENT_REQUESTS;
+  }
 }
