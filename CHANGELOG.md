@@ -2,6 +2,19 @@
 
 All notable changes to the "doc-translate" extension will be documented in this file.
 
+## [1.2.0] - 2026-01-18
+
+### ✨ New Features
+- **Global Concurrency Limiter**: Added global semaphore to limit concurrent API requests across all files
+  - Prevents rate limiting issues when multiple files are open simultaneously
+  - Configurable via `docTranslate.maxConcurrentRequests` setting (default: 10, range: 1-50)
+  - Shared across all files to ensure total API requests stay within limits
+- **File Exclusion Settings**: Added glob-based file exclusion with live refresh
+  - Configure exclusion patterns via `docTranslate.exclude` setting
+  - Supports glob patterns (e.g., `**/node_modules/**`, `*.test.ts`)
+  - Automatically refreshes translations when exclusion settings change
+  - Excluded files are skipped during translation to improve performance
+
 ## [1.1.3] - 2025-12-18
 
 ### 🔧 Improvements & Fixes
