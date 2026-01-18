@@ -18,6 +18,7 @@
   "config.timeout": "API request timeout (milliseconds)",
   "config.maxRetries": "Maximum number of retries on rate limit",
   "config.retryInitialDelay": "Initial retry delay (milliseconds)",
+  "config.maxConcurrentRequests": "Maximum number of concurrent API requests across all files (default: 10). Limits total parallel requests to prevent rate limiting.",
   "command.clearCache": "Doc Translate: Clear Translation Cache",
   "command.showLogs": "Doc Translate: Show Logs"
 }

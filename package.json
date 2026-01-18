@@ -139,6 +139,13 @@
           "type": "number",
           "default": 1000,
           "description": "%config.retryInitialDelay%"
+        },
+        "docTranslate.maxConcurrentRequests": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "%config.maxConcurrentRequests%"
         }
       }
     }

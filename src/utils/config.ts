@@ -190,4 +190,27 @@ export class ConfigManager {
   static getAzureOpenAIDeploymentName(): string {
     return this.getConfig().get<string>('azureOpenaiDeploymentName') || DEFAULT_CONFIG.AZURE_OPENAI_DEPLOYMENT_NAME;
   }
+
+  /**
+   * Get maximum concurrent API requests across all files
+   */
+  static getMaxConcurrentRequests(): number {
+    const configured = this.getConfig().get<number>('maxConcurrentRequests');
+
+    // If not set or not a valid number, fall back to default
+    if (typeof configured !== 'number' || !Number.isFinite(configured)) {
+      return DEFAULT_CONFIG.MAX_CONCURRENT_REQUESTS;
+    }
+
+    // Enforce bounds defined in package.json (minimum: 1, maximum: 50)
+    const clamped = Math.min(50, Math.max(1, configured));
+
+    if (clamped !== configured) {
+      console.warn(
+        `[docTranslate] maxConcurrentRequests value ${configured} is out of bounds. Clamped to ${clamped}.`
+      );
+    }
+
+    return clamped;
+  }
 }

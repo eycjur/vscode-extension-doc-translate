@@ -71,7 +71,7 @@ v1.0.3 - プロダクションレディ。マルチLLM（Azure OpenAI含む4プ�
 5. **バックグラウンド事前翻訳**
    - ファイルオープン・保存・タブ切り替え時に全docstringとコメントを自動翻訳
    - **キャッシュベース**: キャッシュがあればAPI呼び出しなし、なければ翻訳
-   - **並列翻訳**: 最大5個のリクエストを同時実行（rate limit対策）
+   - **グローバル並列翻訳**: 全ファイルで共有するセマフォで並列リクエスト数を制御（デフォルト: 10、設定で変更可能）
    - **Progressive translation**: 翻訳完了したブロックから順次表示
    - ステータスバーに進捗表示
    - キャッシュに保存
@@ -164,6 +164,7 @@ v1.0.3 - プロダクションレディ。マルチLLM（Azure OpenAI含む4プ�
 - `retryHelper.ts` - リトライロジック（指数バックオフ）
 - `languageDetector.ts` - 言語検出（francライブラリ統合）
 - `commentFormatter.ts` - 言語固有のコメントフォーマット
+- `globalSemaphore.ts` - グローバルなAPIリクエスト並行数制限（セマフォ実装）
 
 ### `src/test/`（テストコード）
 - 87個のユニットテスト（baseDetector, languageDetector, commentFormatter, translationCache, config）
@@ -216,6 +217,9 @@ v1.0.3 - プロダクションレディ。マルチLLM（Azure OpenAI含む4プ�
 - `docTranslate.timeout` - APIリクエストのタイムアウト（ミリ秒、デフォルト: `30000`）
 - `docTranslate.maxRetries` - 最大リトライ回数（デフォルト: `3`）
 - `docTranslate.retryInitialDelay` - リトライ初期遅延（ミリ秒、デフォルト: `1000`）
+- `docTranslate.maxConcurrentRequests` - 全ファイルで同時に実行するAPIリクエストの最大数（デフォルト: `10`、範囲: 1-50）
+  - 複数ファイルを同時に開いても、この設定値を超えるAPIリクエストは同時に実行されません
+  - レート制限を防ぐために使用します
 
 ### Anthropic Claude設定
 - `docTranslate.anthropicApiKey` - Anthropic APIキー（環境変数 `ANTHROPIC_API_KEY` が優先）
