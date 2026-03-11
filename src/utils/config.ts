@@ -213,4 +213,18 @@ export class ConfigManager {
 
     return clamped;
   }
+
+  /**
+   * Get number of lines before/after selection to show original text instead of overlay
+   */
+  static getSelectionMarginLines(): number {
+    const configured = this.getConfig().get<number>('selectionMarginLines');
+
+    if (typeof configured !== 'number' || !Number.isFinite(configured)) {
+      return DEFAULT_CONFIG.SELECTION_MARGIN_LINES;
+    }
+
+    const clamped = Math.min(20, Math.max(0, configured));
+    return clamped;
+  }
 }

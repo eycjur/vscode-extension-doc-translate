@@ -19,6 +19,7 @@
   "config.maxRetries": "Maximum number of retries on rate limit",
   "config.retryInitialDelay": "Initial retry delay (milliseconds)",
   "config.maxConcurrentRequests": "Maximum number of concurrent API requests across all files (default: 10). Limits total parallel requests to prevent rate limiting.",
+  "config.selectionMarginLines": "Number of lines before/after cursor selection to show original text instead of translation overlay (default: 3, range: 0-20).",
   "command.clearCache": "Doc Translate: Clear Translation Cache",
   "command.showLogs": "Doc Translate: Show Logs"
 }

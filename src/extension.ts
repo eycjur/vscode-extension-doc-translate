@@ -85,6 +85,11 @@ export function activate(context: vscode.ExtensionContext) {
           logger.info('Max concurrent requests changed, updating semaphore limit');
           preTranslationService.updateConcurrencyLimit();
         }
+
+        if (event.affectsConfiguration('docTranslate.selectionMarginLines')) {
+          logger.info('Selection margin lines changed, refreshing decorations');
+          inlineProvider.refreshVisibleEditors();
+        }
       }
     }
   );

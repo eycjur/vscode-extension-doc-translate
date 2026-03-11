@@ -19,6 +19,7 @@
   "config.maxRetries": "Rate limit発生時の最大リトライ回数",
   "config.retryInitialDelay": "リトライの初期待機時間（ミリ秒）",
   "config.maxConcurrentRequests": "全ファイルで同時に実行するAPIリクエストの最大数（デフォルト: 10）。レート制限を防ぐため、並列リクエスト数を制限します。",
+  "config.selectionMarginLines": "カーソル・選択範囲の前後何行を翻訳オーバーレイせず元のテキスト表示にするか（デフォルト: 3、範囲: 0-20）。",
   "command.clearCache": "Doc Translate: 翻訳キャッシュをクリア",
   "command.showLogs": "Doc Translate: ログを表示"
 }

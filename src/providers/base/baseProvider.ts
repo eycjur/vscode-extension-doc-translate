@@ -4,6 +4,7 @@ import { isTranslationNeeded } from '../../utils/languageDetector';
 import { LANGUAGE_NAMES } from '../../utils/constants';
 import { withRetry } from '../../utils/retryHelper';
 import { ConfigManager } from '../../utils/config';
+import { SKIP_MARKER } from '../../services/translationCache';
 
 /**
  * Base class for translation providers
@@ -231,7 +232,7 @@ ${JSON.stringify(texts, null, 2)}`;
 
     const skipResult = await this.checkTranslationNeeded(text, targetLang);
     if (skipResult !== null) {
-      return skipResult;
+      return SKIP_MARKER;
     }
 
     await this.ensureClientInitialized();
@@ -322,7 +323,7 @@ ${JSON.stringify(texts, null, 2)}`;
 
     for (let i = 0; i < texts.length; i++) {
       if (checks[i] !== null) {
-        results[i] = checks[i]!; // Skip translation, use original
+        results[i] = SKIP_MARKER; // Skip translation, cache marker
       } else {
         indicesToTranslate.push(i);
         textsToTranslate.push(texts[i]);

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { TranslationCache } from './translationCache';
+import { TranslationCache, SKIP_MARKER } from './translationCache';
 import { logger } from '../utils/logger';
 import { formatDocstring, formatComment } from '../utils/commentFormatter';
 import { ConfigManager } from '../utils/config';
@@ -64,12 +64,17 @@ export class InlineTranslationProvider {
 
     logger.debug(`Updating inline translations for ${blocks.length} blocks`);
 
+    const targetLang = ConfigManager.getTargetLang();
+
     for (const block of blocks) {
-      const translation = this.cache.get(
-        block.text,
-        ConfigManager.getTargetLang()
-      );
+      const translation = this.cache.get(block.text, targetLang);
       if (!translation) {
+        continue;
+      }
+
+      // Skip overlay if translation was skipped (cached marker for same-language)
+      if (translation === SKIP_MARKER) {
+        logger.debug(`Skipping overlay: translation skipped (already in ${targetLang})`);
         continue;
       }
 
@@ -252,14 +257,16 @@ export class InlineTranslationProvider {
     const commentGroups = this.commentDecorationGroups.get(fileKey) || [];
     const docstringGroups = this.docstringDecorationGroups.get(fileKey) || [];
 
-    // Filter out groups where cursor/selection overlaps with block range
+    // Filter out groups where cursor/selection (including ±5 lines) overlaps with block range
     const filteredCommentDecorations = this.filterGroupsBySelection(
       commentGroups,
-      editor.selections
+      editor.selections,
+      editor.document
     );
     const filteredDocstringDecorations = this.filterGroupsBySelection(
       docstringGroups,
-      editor.selections
+      editor.selections,
+      editor.document
     );
 
     // Combine all decorations (comments and docstrings use the same decoration type)
@@ -272,28 +279,44 @@ export class InlineTranslationProvider {
   }
 
   /**
-   * Filter groups by checking if cursor/selection overlaps with block range
-   * If cursor is anywhere in a block, exclude all decorations for that block
+   * Filter groups by checking if cursor/selection (including ±5 lines margin) overlaps with block range
+   * If cursor/selection is within a block or within 5 lines before/after it, exclude all decorations for that block
    */
   private filterGroupsBySelection(
     groups: (DocstringDecorationGroup | CommentDecorationGroup)[],
-    selections: readonly vscode.Selection[]
+    selections: readonly vscode.Selection[],
+    document: vscode.TextDocument
   ): vscode.DecorationOptions[] {
     const result: vscode.DecorationOptions[] = [];
+    const margin = ConfigManager.getSelectionMarginLines();
+
+    if (document.lineCount === 0) {
+      return groups.flatMap((g) => g.decorations);
+    }
 
     for (const group of groups) {
       let shouldInclude = true;
 
-      // Check if any selection/cursor overlaps with this block
+      // Check if any selection/cursor (with ±margin lines) overlaps with this block
       for (const selection of selections) {
-        // Check for selection range overlap
-        if (group.blockRange.intersection(selection)) {
-          shouldInclude = false;
-          break;
-        }
+        // Expand selection range by margin lines before and after
+        const expandedStartLine = Math.max(
+          0,
+          selection.start.line - margin
+        );
+        const expandedEndLine = Math.min(
+          document.lineCount - 1,
+          selection.end.line + margin
+        );
+        const expandedRange = new vscode.Range(
+          expandedStartLine,
+          0,
+          expandedEndLine,
+          document.lineAt(expandedEndLine).text.length
+        );
 
-        // Check if cursor is inside this block (even without selection)
-        if (selection.isEmpty && group.blockRange.contains(selection.active)) {
+        // Check if block overlaps with expanded selection range
+        if (group.blockRange.intersection(expandedRange)) {
           shouldInclude = false;
           break;
         }
