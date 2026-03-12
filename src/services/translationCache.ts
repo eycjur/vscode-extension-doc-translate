@@ -4,6 +4,9 @@ import { logger } from '../utils/logger';
 
 const CACHE_STORAGE_KEY = 'doc-translate.translationCache';
 
+/** Marker for cache when translation was skipped (e.g., already in target language) */
+export const SKIP_MARKER = '__SKIP_TRANSLATION__';
+
 export class TranslationCache {
   private cache: Map<string, string> = new Map();
   private context: vscode.ExtensionContext;

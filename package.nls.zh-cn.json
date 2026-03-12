@@ -19,6 +19,7 @@
   "config.maxRetries": "速率限制时的最大重试次数",
   "config.retryInitialDelay": "重试初始延迟（毫秒）",
   "config.maxConcurrentRequests": "所有文件中同时执行的 API 请求最大数量（默认：10）。限制并行请求数以防止速率限制。",
+  "config.selectionMarginLines": "光标或选择范围前后多少行显示原文而非翻译覆盖（默认：3，范围：0-20）。",
   "command.clearCache": "Doc Translate: 清除翻译缓存",
   "command.showLogs": "Doc Translate: 显示日志"
 }
