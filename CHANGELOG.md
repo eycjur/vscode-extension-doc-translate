@@ -2,6 +2,25 @@
 
 All notable changes to the "doc-translate" extension will be documented in this file.
 
+## [1.2.1] - 2026-03-12
+
+### ✨ New Features
+- **Selection Margin Lines Setting**: Added configurable margin for cursor/selection area
+  - New `docTranslate.selectionMarginLines` setting (default: 3, range: 0-20)
+  - Lines before/after cursor selection show original text instead of translation overlay
+  - Refreshes decorations when setting changes
+
+### 🔧 Improvements & Fixes
+- **Same-Language Overlay Prevention**: Cache skip marker instead of original text when translation is not needed
+  - Prevents overlay display for blocks already in target language (e.g., Japanese→Japanese)
+  - Uses `SKIP_MARKER` in cache to avoid redundant language detection in overlay phase
+  - Reduces memory usage and eliminates duplicate franc language detection calls
+
+### 🐛 Bug Fixes
+- **Untranslated Content Overlay**: Fixed overlay being applied to same-language content
+  - BaseProvider now returns skip marker when translation is skipped (same language or symbols only)
+  - InlineTranslationProvider skips overlay when cache contains skip marker
+
 ## [1.2.0] - 2026-01-18
 
 ### ✨ New Features
