@@ -2,6 +2,12 @@
 
 All notable changes to the "doc-translate" extension will be documented in this file.
 
+## [1.2.2] - 2026-07-21
+
+### 🔧 Improvements & Fixes
+- **Gemini Default Model Update**: Updated the default Google Gemini model from `gemini-2.0-flash-exp` to `gemini-2.5-flash`
+  - Applied across `package.json`, constants, and documentation (EN/JA/ZH-CN)
+
 ## [1.2.1] - 2026-03-12
 
 ### ✨ New Features
