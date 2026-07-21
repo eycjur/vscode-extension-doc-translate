@@ -97,7 +97,7 @@ This extension contributes the following settings:
 
 ### Google Gemini Settings
 * `docTranslate.geminiApiKey`: Gemini API key (this setting takes precedence over environment variable `GEMINI_API_KEY`)
-* `docTranslate.geminiModel`: Gemini model to use (default: `gemini-2.0-flash-exp`)
+* `docTranslate.geminiModel`: Gemini model to use (default: `gemini-2.5-flash`)
 
 ### Azure OpenAI Settings
 * `docTranslate.azureOpenaiApiKey`: Azure OpenAI API key (this setting takes precedence over environment variable `AZURE_OPENAI_API_KEY`)

@@ -58,7 +58,7 @@
 
 ### Google Gemini 设置
 * `docTranslate.geminiApiKey`: Gemini API 密钥（优先使用 `GEMINI_API_KEY` 环境变量）
-* `docTranslate.geminiModel`: 使用的 Gemini 模型（默认: `gemini-2.0-flash-exp`）
+* `docTranslate.geminiModel`: 使用的 Gemini 模型（默认: `gemini-2.5-flash`）
 
 ## 使用方法
 

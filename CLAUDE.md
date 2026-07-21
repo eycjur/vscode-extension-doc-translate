@@ -29,7 +29,7 @@ v1.0.3 - プロダクションレディ。マルチLLM（Azure OpenAI含む4プ�
 - **翻訳エンジン**: 選択可能な4つのLLMプロバイダー
   - Anthropic Claude（デフォルト: Claude Haiku 4.5）
   - OpenAI（デフォルト: GPT-4o-mini）
-  - Google Gemini（デフォルト: Gemini 2.0 Flash）
+  - Google Gemini（デフォルト: Gemini 2.5 Flash）
   - Azure OpenAI（エンタープライズ向け、カスタムエンドポイント対応）
 - **検出方法**: LSP（Language Server Protocol）でdocstringを検出、正規表現でコメントを検出
   - Python: Pylance
@@ -231,7 +231,7 @@ v1.0.3 - プロダクションレディ。マルチLLM（Azure OpenAI含む4プ�
 
 ### Google Gemini設定
 - `docTranslate.geminiApiKey` - Gemini APIキー（環境変数 `GEMINI_API_KEY` が優先）
-- `docTranslate.geminiModel` - 使用するGeminiモデル（デフォルト: `gemini-2.0-flash-exp`）
+- `docTranslate.geminiModel` - 使用するGeminiモデル（デフォルト: `gemini-2.5-flash`）
 
 ### Azure OpenAI設定
 - `docTranslate.azureOpenaiApiKey` - Azure OpenAI APIキー（環境変数 `AZURE_OPENAI_API_KEY` が優先）

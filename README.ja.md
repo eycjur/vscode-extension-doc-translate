@@ -61,7 +61,7 @@
 
 ### Google Gemini設定
 * `docTranslate.geminiApiKey`: Gemini APIキー（この設定が環境変数 `GEMINI_API_KEY` より優先されます）
-* `docTranslate.geminiModel`: 使用するGeminiモデル（デフォルト: `gemini-2.0-flash-exp`）
+* `docTranslate.geminiModel`: 使用するGeminiモデル（デフォルト: `gemini-2.5-flash`）
 
 ### Azure OpenAI設定
 * `docTranslate.azureOpenaiApiKey`: Azure OpenAI APIキー（この設定が環境変数 `AZURE_OPENAI_API_KEY` より優先されます）

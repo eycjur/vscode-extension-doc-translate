@@ -25,7 +25,7 @@ export const DEFAULT_CONFIG = {
     PROVIDER: 'anthropic' as const,
     ANTHROPIC_MODEL: 'claude-haiku-4-5-20251001',
     OPENAI_MODEL: 'gpt-4o-mini',
-    GEMINI_MODEL: 'gemini-2.0-flash-exp',
+    GEMINI_MODEL: 'gemini-2.5-flash',
     AZURE_OPENAI_API_VERSION: '2024-02-15-preview',
     AZURE_OPENAI_DEPLOYMENT_NAME: 'gpt-4o-mini',
     EXCLUDE: [] as string[],
